@@ -1,176 +1,239 @@
 ---
 // src/components/ShaderField.astro
-// Campo shader iridiscente (OGL) — §17. Fondo premium para hero/cierre.
-// Colores desde variables del tema; fallback CSS estático; respeta reduced-motion;
-// pausa fuera de viewport; se destruye en astro:before-swap.
-interface Props { class?: string }
-const { class: className = '' } = Astro.props;
+// Fondo de hero genérico pero elegante (pedido explícito: "la imagen de inicio no
+// refleja las 5 industrias... mejor una imagen en movimiento genérica pero elegante, o
+// una gradiente que se mueve"). Reemplaza el video de fondo de Hero.astro (que mostraba
+// la foto de UNA sola división, sesgada). Shader WebGL vía OGL (CLAUDE.md §17): un mesh
+// gradient de 3 "blobs" de color que respiran/flotan lento -- nunca una foto de stock
+// genérica, nunca un color inventado (los 3 tonos son var(--bg-primary)/var(--accent)/
+// var(--accent-hover) leídos en runtime, nunca hardcodeados en el GLSL).
+//
+// Reglas aplicadas (§17.3): fallback CSS estático SIEMPRE presente debajo del canvas;
+// sin animar si prefers-reduced-motion (canvas ni se inicializa); IntersectionObserver
+// pausa el rAF fuera de viewport; dpr <= 2; pausa en visibilitychange; destruye el
+// contexto WebGL en astro:before-swap; init en astro:page-load (no un evento one-shot).
 ---
 
-<div class={`shaderfield ${className}`} data-shaderfield aria-hidden="true">
-  <canvas data-shader-canvas></canvas>
+<div class="shader-field" aria-hidden="true">
+  <canvas class="shader-field__canvas" data-shader-canvas></canvas>
 </div>
 
 <script>
   import { Renderer, Program, Mesh, Triangle } from 'ogl';
 
+  const VERT = `
+    attribute vec2 uv;
+    attribute vec2 position;
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+  `;
+
   const FRAG = `
     precision highp float;
     uniform float uTime;
-    uniform vec2 uRes;
-    uniform vec3 uAccent;
-    uniform vec3 uBg;
-    uniform vec3 uMid;
+    uniform vec2 uResolution;
+    uniform vec3 uColorBg;
+    uniform vec3 uColorAccent;
+    uniform vec3 uColorAccentLight;
+    varying vec2 vUv;
 
-    // fbm simplex-ish noise (barato)
-    vec3 hash3(vec2 p){
-      vec3 q = vec3(dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)), dot(p,vec2(419.2,371.9)));
-      return fract(sin(q)*43758.5453);
-    }
-    float noise(vec2 p){
-      vec2 i = floor(p); vec2 f = fract(p);
-      vec2 u = f*f*(3.0-2.0*f);
-      float a = hash3(i).x;
-      float b = hash3(i+vec2(1.0,0.0)).x;
-      float c = hash3(i+vec2(0.0,1.0)).x;
-      float d = hash3(i+vec2(1.0,1.0)).x;
-      return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
-    }
-    float fbm(vec2 p){
-      float v = 0.0; float a = 0.5;
-      for(int i=0;i<5;i++){ v += a*noise(p); p *= 2.0; a *= 0.5; }
-      return v;
+    float blob(vec2 uv, vec2 center, float radius) {
+      float d = distance(uv, center);
+      // smoothstep(edge0, edge1, x) es comportamiento INDEFINIDO si edge0 >= edge1 (spec
+      // GLSL) -- bug real detectado ("se mueve extraño"): con radius > radius*0.1 el
+      // orden estaba invertido, y cada GPU/driver lo resuelve distinto (bordes duros,
+      // parpadeo). Forma correcta: 1 en el centro, 0 en el borde, con edge0=0 < edge1=radius.
+      return 1.0 - smoothstep(0.0, radius, d);
     }
 
-    void main(){
-      vec2 uv = gl_FragCoord.xy / uRes.xy;
-      vec2 p = uv * 2.6;
-      float t = uTime * 0.05;
+    void main() {
+      float aspect = uResolution.x / uResolution.y;
+      vec2 uv = vUv;
+      uv.x *= aspect;
 
-      // dominio que fluye
-      vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2,1.3) - t));
-      float f = fbm(p + 1.8*q + t*0.5);
+      // uTime ya llega en segundos desde el primer frame de ESTA instancia (ver script
+      // más abajo) -- nunca el timestamp crudo de rAF (milisegundos, crece sin límite):
+      // sin/cos en GPU pierden precisión con ángulos grandes y el movimiento se ve
+      // tembloroso/errático después de un rato con la pestaña abierta (segundo bug real
+      // detrás de "se mueve extraño").
+      float t = uTime * 0.045;
 
-      // mezcla navy -> mid -> accent
-      vec3 col = mix(uBg, uMid, smoothstep(0.2, 0.7, f));
-      col = mix(col, uAccent, smoothstep(0.62, 0.95, f) * 0.55);
+      vec2 c1 = vec2(0.32 + sin(t * 0.8) * 0.16, 0.62 + cos(t * 0.6) * 0.14);
+      vec2 c2 = vec2(0.72 + cos(t * 0.5) * 0.18, 0.34 + sin(t * 0.7) * 0.16);
+      vec2 c3 = vec2(0.5 + sin(t * 0.35 + 2.1) * 0.22, 0.52 + cos(t * 0.4 + 1.3) * 0.2);
+      c1.x *= aspect;
+      c2.x *= aspect;
+      c3.x *= aspect;
 
-      // sheen iridiscente sutil
-      float irid = sin((f*6.0) + uv.x*3.0 + t*4.0) * 0.5 + 0.5;
-      col += uAccent * irid * 0.05;
+      float b1 = blob(uv, c1, 0.6);
+      float b2 = blob(uv, c2, 0.55);
+      float b3 = blob(uv, c3, 0.65);
 
-      // viñeta para fundir con la sección
-      float vig = smoothstep(1.15, 0.25, length(uv - 0.5));
-      col = mix(uBg, col, vig);
+      vec3 color = uColorBg;
+      color = mix(color, uColorAccent, b1 * 0.75);
+      color = mix(color, uColorAccentLight, b2 * 0.3);
+      color = mix(color, uColorAccent, b3 * 0.45);
 
-      gl_FragColor = vec4(col, 1.0);
+      gl_FragColor = vec4(color, 1.0);
     }
   `;
 
-  const VERT = `
-    attribute vec2 position;
-    void main(){ gl_Position = vec4(position, 0.0, 1.0); }
-  `;
-
-  function hexToRgb(hex) {
-    hex = (hex || '').trim().replace('#','');
-    if (hex.length === 3) hex = hex.split('').map(c => c+c).join('');
-    const n = parseInt(hex || '000000', 16);
-    return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+  function hexToRgb01(hex: string): [number, number, number] {
+    const m = hex.trim().replace('#', '');
+    const full = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+    const num = parseInt(full, 16);
+    return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
   }
 
-  let cleanups = [];
+  // Los colores pueden venir como hex (`--accent`) o como color-mix()/otra función CSS
+  // (`--accent-hover`) -- para leer el valor REAL ya resuelto por el navegador (nunca
+  // re-derivar un color a mano), se pinta en un <div> invisible y se lee su
+  // `getComputedStyle(...).color` resultante, que el browser siempre devuelve en rgb().
+  function resolveCssColor(varName: string): [number, number, number] {
+    const probe = document.createElement('div');
+    probe.style.color = `var(${varName})`;
+    probe.style.position = 'absolute';
+    probe.style.opacity = '0';
+    probe.style.pointerEvents = 'none';
+    document.body.appendChild(probe);
+    const rgb = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    const match = rgb.match(/[\d.]+/g);
+    if (!match) return hexToRgb01('#080A09');
+    return [Number(match[0]) / 255, Number(match[1]) / 255, Number(match[2]) / 255];
+  }
 
-  // Soporta múltiples instancias en la misma página; cada una lee sus propios colores
-  // heredados (respeta overrides locales de --accent/--bg-primary/--bg-secondary en un
-  // ancestro, ej. una sección que invierte a modo oscuro).
-  function initOne(host) {
-    const canvas = host.querySelector('[data-shader-canvas]');
-    if (!canvas) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; // fallback CSS
+  let renderer: InstanceType<typeof Renderer> | undefined;
+  let program: InstanceType<typeof Program> | undefined;
+  let mesh: InstanceType<typeof Mesh> | undefined;
+  let rafId = 0;
+  let io: IntersectionObserver | undefined;
+  let inView = true;
+  let container: HTMLElement | null;
+  let onResize: (() => void) | undefined;
 
-    let renderer;
+  function initShaderField() {
+    const canvas = document.querySelector<HTMLCanvasElement>('[data-shader-canvas]');
+    container = canvas?.closest('.shader-field') ?? null;
+    if (!canvas || !container) return;
+
+    // Regla dura §17.3 #2: sin JS para animar bajo reduced-motion -- se omite el canvas
+    // por completo y queda SOLO el gradiente CSS estático (siempre presente, ver <style>
+    // abajo).
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let gl: WebGLRenderingContext | WebGL2RenderingContext;
     try {
-      renderer = new Renderer({ canvas, dpr: Math.min(window.devicePixelRatio, 2), alpha: false, antialias: false });
-    } catch (e) { return; } // sin WebGL → fallback CSS
-    const gl = renderer.gl;
+      renderer = new Renderer({ canvas, alpha: false, antialias: true, dpr: Math.min(window.devicePixelRatio || 1, 2) });
+      gl = renderer.gl;
+    } catch {
+      // WebGL no disponible -- el gradiente CSS de abajo ya cubre este caso.
+      return;
+    }
 
-    const css = getComputedStyle(host);
-    const program = new Program(gl, {
-      vertex: VERT, fragment: FRAG,
+    const colorBg = resolveCssColor('--bg-primary');
+    const colorAccent = resolveCssColor('--accent');
+    const colorAccentLight = resolveCssColor('--accent-hover');
+
+    const geometry = new Triangle(gl);
+    program = new Program(gl, {
+      vertex: VERT,
+      fragment: FRAG,
       uniforms: {
-        uTime:   { value: 0 },
-        uRes:    { value: [1, 1] },
-        uAccent: { value: hexToRgb(css.getPropertyValue('--accent')) },
-        uBg:     { value: hexToRgb(css.getPropertyValue('--bg-primary')) },
-        uMid:    { value: hexToRgb(css.getPropertyValue('--bg-secondary')) },
+        uTime: { value: 0 },
+        uResolution: { value: [container.clientWidth, container.clientHeight] },
+        uColorBg: { value: colorBg },
+        uColorAccent: { value: colorAccent },
+        uColorAccentLight: { value: colorAccentLight },
       },
     });
-    const mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
+    mesh = new Mesh(gl, { geometry, program });
 
-    const resize = () => {
-      const r = host.getBoundingClientRect();
-      if (r.width < 1 || r.height < 1) return;
-      renderer.setSize(r.width, r.height);
-      program.uniforms.uRes.value = [gl.canvas.width, gl.canvas.height];
-    };
+    function resize() {
+      if (!renderer || !container || !program) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      renderer.setSize(w, h);
+      program.uniforms.uResolution.value = [w, h];
+    }
     resize();
-    // ResizeObserver, no solo window "resize": el host puede crecer sin que cambie el
-    // tamaño de la ventana -- ej. un ScrollTrigger con pin en algun descendiente (como
-    // el mapa de TerritoryMap) inserta un "pin-spacer" que alarga la seccion DESPUES
-    // de este resize() inicial. Sin esto el canvas se quedaba con el buffer del alto
-    // viejo (mas corto) y el resto de la seccion, ya crecida, mostraba el --bg-primario
-    // solido por debajo -- bug real, corte horizontal visible al hacer scroll.
-    const ro = new ResizeObserver(() => resize());
-    ro.observe(host);
+    onResize = resize;
+    window.addEventListener('resize', onResize);
 
-    let raf = 0, running = false, t0 = performance.now();
-    const loop = (now) => {
-      program.uniforms.uTime.value = (now - t0) / 1000;
+    io = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; }, { threshold: 0 });
+    io.observe(container);
+
+    // Nota: la pausa en background pasa por el chequeo `document.hidden` DENTRO del
+    // loop de abajo, en cada frame -- no hace falta (ni conviene) un listener de
+    // `visibilitychange` aparte: una versión anterior mezclaba `inView &&= !hidden`, lo
+    // que podía dejar `inView` en false para siempre tras un solo backgrounding, aunque
+    // el IntersectionObserver siguiera diciendo que el elemento está a la vista (bug
+    // real: el shader nunca volvía a animar).
+
+    // `t` (el timestamp de rAF, en milisegundos desde la navegación) nunca se pasa
+    // crudo al shader: sin/cos en GPU pierden precisión con ángulos grandes y el
+    // movimiento se vuelve tembloroso/errático cuanto más tiempo lleva la pestaña
+    // abierta (bug real detectado: "se mueve extraño"). Se normaliza a segundos desde
+    // el primer frame de ESTA instancia -- arranca siempre chico y predecible.
+    let startTime: number | undefined;
+    function update(t: number) {
+      rafId = requestAnimationFrame(update);
+      if (!inView || document.hidden || !renderer || !program || !mesh) return;
+      if (startTime === undefined) startTime = t;
+      program.uniforms.uTime.value = (t - startTime) / 1000;
       renderer.render({ scene: mesh });
-      raf = requestAnimationFrame(loop);
-    };
-    const start = () => { if (!running) { running = true; raf = requestAnimationFrame(loop); } };
-    const stop  = () => { running = false; cancelAnimationFrame(raf); };
-
-    // Pausa fuera de viewport
-    const io = new IntersectionObserver(([e]) => e.isIntersecting ? start() : stop(), { threshold: 0.01 });
-    io.observe(host);
-    const onVis = () => document.hidden ? stop() : start();
-    document.addEventListener('visibilitychange', onVis);
-
-    cleanups.push(() => {
-      stop(); io.disconnect();
-      ro.disconnect();
-      document.removeEventListener('visibilitychange', onVis);
-      const ext = gl.getExtension('WEBGL_lose_context'); ext && ext.loseContext();
-    });
+    }
+    rafId = requestAnimationFrame(update);
   }
 
-  function initShader() {
-    cleanups.forEach((fn) => fn());
-    cleanups = [];
-    document.querySelectorAll('[data-shaderfield]').forEach(initOne);
+  function cleanupShaderField() {
+    cancelAnimationFrame(rafId);
+    io?.disconnect();
+    io = undefined;
+    if (onResize) window.removeEventListener('resize', onResize);
+    onResize = undefined;
+    // Libera el contexto WebGL explícitamente -- sin esto, cada navegación (View
+    // Transitions) deja un contexto GL huérfano y los navegadores limitan cuántos
+    // pueden existir a la vez.
+    try {
+      renderer?.gl.getExtension('WEBGL_lose_context')?.loseContext();
+    } catch {
+      /* noop */
+    }
+    renderer = undefined;
+    program = undefined;
+    mesh = undefined;
   }
 
-  document.addEventListener('astro:page-load', initShader);
-  document.addEventListener('astro:before-swap', () => { cleanups.forEach((fn) => fn()); cleanups = []; });
+  document.addEventListener('astro:page-load', initShaderField);
+  document.addEventListener('astro:before-swap', cleanupShaderField);
 </script>
 
 <style>
-  .shaderfield {
-    position: absolute; inset: 0; z-index: 0;
-    overflow: hidden;
+  .shader-field {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
     pointer-events: none;
-    /* Fallback CSS (sin JS / reduced-motion / sin WebGL): gradiente iridiscente estático */
+    /* Fallback SIEMPRE presente (§17.3 #2): gradiente estático equivalente en CSS puro,
+       visible de entrada y lo único que queda sin JS, con reduced-motion, o si WebGL no
+       está disponible -- nunca una pantalla vacía. */
     background:
-      radial-gradient(60% 80% at 20% 30%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
-      radial-gradient(50% 70% at 80% 70%, color-mix(in srgb, var(--bg-secondary) 90%, var(--accent)), transparent 65%),
+      radial-gradient(60% 55% at 28% 68%, color-mix(in srgb, var(--accent) 55%, transparent) 0%, transparent 70%),
+      radial-gradient(55% 50% at 74% 30%, color-mix(in srgb, var(--accent-hover) 30%, transparent) 0%, transparent 70%),
       var(--bg-primary);
   }
-  .shaderfield canvas { display: block; width: 100%; height: 100%; }
+
+  .shader-field__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
 
   @media (prefers-reduced-motion: reduce) {
-    .shaderfield canvas { display: none; }
+    .shader-field__canvas { display: none; }
   }
 </style>

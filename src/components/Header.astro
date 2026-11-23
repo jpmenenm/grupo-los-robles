@@ -1,7 +1,14 @@
 ---
 // src/components/Header.astro
-// Chrome global del sitio. Barra mínima: logo + selector de idioma + toggle del menú
-// lateral (SideNav.astro). Lee contracts/site*.json (fuente única de marca) según `locale`.
+// Chrome global del sitio. "ART DIRECTION RESET" (pedido explicito del Ingeniero):
+// "no utilizar una barra blanca superior, el header debe integrarse con el fondo
+// oscuro" -- se elimina por completo el sistema anterior de pill clara/inversion a
+// oscuro sobre secciones claras (ya era logica muerta: ninguna seccion real del sitio
+// declara data-header-theme="light" desde el pivote a oscuro-por-defecto). El header
+// ahora es siempre una pill oscura y translucida. Nav discreta a la derecha
+// (Industrias / Nuestro alcance / Contacto) + CTA "Hablemos", visible desde desktop;
+// en mobile esos enlaces se recogen en el menu lateral (SideNav.astro) via el toggle.
+// Lee contracts/site*.json (fuente única de marca) según `locale`.
 import siteEs from '../../contracts/site.json';
 import siteEn from '../../contracts/site.en.json';
 
@@ -9,22 +16,49 @@ const { locale = 'es' } = Astro.props;
 const site = locale === 'en' ? siteEn : siteEs;
 const { siteName } = site.site;
 
-const altHref = locale === 'en' ? '.' : 'en/';
+// Root-relative (import.meta.env.BASE_URL), no relativo a la carpeta actual: con una
+// sola pagina (index.astro en "/") "en/" y "#inicio" resolvian bien por accidente, pero
+// ahora el Header vive en varias rutas reales (/gastronomia, /vestuario, etc.) -- un
+// link relativo tipo "en/" desde "/gastronomia/" apuntaria a "/gastronomia/en/", no a
+// "/en/". Root-relative funciona igual sin importar desde que pagina se abra el Header.
+const base = import.meta.env.BASE_URL;
+const altHref = locale === 'en' ? base : `${base}en/`;
+const homeHref = locale === 'en' ? `${base}en/` : base;
 const altLabel = locale === 'en' ? 'ES' : 'EN';
 const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
+
+// Anclas reales del Home (root-relative, mismo criterio que homeHref/altHref arriba --
+// funcionan igual desde cualquier pagina del sitio, no solo desde "/").
+const homePrefix = locale === 'en' ? `${base}en/` : base;
+const t = locale === 'en'
+  ? { industries: 'Industries', contact: 'Contact', cta: "Let's talk" }
+  : { industries: 'Industrias', contact: 'Contacto', cta: 'Hablemos' };
+// "Nuestro alcance" se quitó junto con la sección Legacy (pedido explícito del
+// Ingeniero Líder: "eliminar toda la sección" -- nunca dejar un link roto a un ancla
+// que ya no existe).
+const navLinks = [
+  { label: t.industries, href: `${homePrefix}#divisiones` },
+  { label: t.contact, href: `${homePrefix}#contacto` },
+];
+const ctaHref = `${homePrefix}#contacto`;
 ---
 
 <header class="site-header" data-header>
   <div class="container site-header__inner">
-    <a href={locale === 'en' ? 'en/#inicio' : '#inicio'} class="logo" aria-label={`${siteName}, ${locale === 'en' ? 'Home' : 'Inicio'}`}>
-      <!-- Verde por defecto (header claro); el verde no se lee bien sobre la pill
-           oscura, asi que ahi vuelve a la variante blanca (ver .is-on-light abajo). -->
-      <img class="logo__img logo__img--color" src="images/logo-losRobles.webp" alt={siteName} />
-      <img class="logo__img logo__img--light" src="images/LOGO-LOSrOBLES-BLANCO.webp" alt={siteName} />
+    <a href={homeHref} class="logo" aria-label={`${siteName}, ${locale === 'en' ? 'Home' : 'Inicio'}`}>
+      <img class="logo__img" src="images/LOGO-LOSrOBLES-BLANCO.webp" alt={siteName} />
     </a>
+
+    <nav class="site-header__nav" aria-label={locale === 'en' ? 'Primary' : 'Principal'}>
+      <ul role="list">
+        {navLinks.map((l) => <li><a href={l.href}>{l.label}</a></li>)}
+      </ul>
+    </nav>
 
     <div class="site-header__actions">
       <a href={altHref} class="lang-switch" aria-label={`${locale === 'en' ? 'Switch to Spanish' : 'Cambiar a inglés'}`}>{altLabel}</a>
+
+      <a href={ctaHref} class="site-header__cta">{t.cta}</a>
 
       <button
         class="nav-toggle"
@@ -58,28 +92,6 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
       onScroll();
       window.addEventListener('scroll', onScroll, { passive: true });
       cleanups.push(() => window.removeEventListener('scroll', onScroll));
-    }
-
-    // El header es blanco por defecto (la mayoria de las secciones del sitio son
-    // oscuras) y pasa a tinta oscura solo mientras lo que tiene detras es una seccion
-    // clara (hoy, unicamente IndustriesGallery.astro) -- pedido explicito: "blanco en
-    // fondos oscuros, oscuro en fondos blancos". Una franja de 1px pegada al borde
-    // inferior del header hace de "sensor": si una seccion marcada como clara la cruza,
-    // esa seccion es la que esta bajo el header en ese instante del scroll.
-    if (header) {
-      const lightSections = document.querySelectorAll<HTMLElement>('[data-header-theme="light"]');
-      if (lightSections.length) {
-        const headerHeight = header.offsetHeight || 72;
-        const themeObserver = new IntersectionObserver(
-          (entries) => {
-            const onLight = entries.some((entry) => entry.isIntersecting);
-            header.classList.toggle('is-on-light', onLight);
-          },
-          { rootMargin: `-${headerHeight}px 0px -${Math.max(window.innerHeight - headerHeight - 1, 0)}px 0px`, threshold: 0 }
-        );
-        lightSections.forEach((section) => themeObserver.observe(section));
-        cleanups.push(() => themeObserver.disconnect());
-      }
     }
 
     // El estado (abierto/cerrado) lo dueño lo tiene SideNav.astro; Header solo despacha el toggle
@@ -133,19 +145,12 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    /* Claro por defecto (pedido explicito) -- pill clara y translucida, se invierte a
-       oscura solo sobre una seccion de fondo claro (.is-on-light, ver mas abajo).
-       Blanco puro (no --bg-primary, el "blanco calido"/crema del tema) -- pedido
-       explicito: "blanco, con opacidad, pero blanco". Unica excepcion deliberada a la
-       regla de solo variables del tema en este proyecto. */
-    background-color: color-mix(in srgb, white 78%, transparent);
+    /* Pill SIEMPRE oscura (pedido explicito del "ART DIRECTION RESET": "no utilizar una
+       barra blanca superior, el header debe integrarse con el fondo oscuro") -- ya no
+       existe inversion a pill clara, el sitio es oscuro por defecto de punta a punta. */
+    background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent);
     backdrop-filter: blur(14px);
-    border-bottom-color: color-mix(in srgb, var(--border) 40%, transparent);
-  }
-
-  .site-header.is-scrolled.is-on-light {
-    background-color: color-mix(in srgb, var(--bg-primary-inverse) 70%, transparent);
-    border-bottom-color: color-mix(in srgb, var(--border-inverse) 40%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--border) 60%, transparent);
   }
 
   .site-header__inner {
@@ -157,8 +162,6 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
   }
 
   /* ── Logo ── */
-  /* Verde por defecto (header claro, pedido explicito); sobre header oscuro (pill
-     oscura, .is-on-light) el verde no se lee bien -- vuelve a la variante blanca ahi. */
   .logo {
     display: inline-flex;
     align-items: center;
@@ -168,11 +171,30 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
     height: clamp(1.75rem, 3vw, 2.25rem);
     width: auto;
   }
-  .logo__img--light { display: none; }
-  .site-header.is-on-light .logo__img--color { display: none; }
-  .site-header.is-on-light .logo__img--light { display: block; }
 
-  /* ── Acciones (idioma + toggle) ── */
+  /* ── Nav discreta (Industrias / Nuestro alcance / Contacto) -- solo desktop, pedido
+     explicito del brief; en mobile se recoge en SideNav.astro vía el toggle. ── */
+  .site-header__nav { display: none; }
+  .site-header__nav ul {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+  }
+  .site-header__nav a {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+  .site-header__nav a:hover { color: var(--text-primary); }
+
+  @media (min-width: 1024px) {
+    .site-header__nav { display: block; }
+  }
+
+  /* ── Acciones (idioma + CTA + toggle) ── */
   .site-header__actions {
     display: flex;
     align-items: center;
@@ -189,8 +211,30 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
     transition: opacity var(--transition-fast), color var(--transition-fast);
   }
   .lang-switch:hover { opacity: 1; }
-  /* Mismo blanco que el resto de la tipografia del tema, nunca un hex suelto. */
-  .site-header.is-on-light .lang-switch { color: var(--text-primary-inverse); }
+
+  /* CTA "Hablemos" -- tipografico puro, mismo lenguaje que Hero/Contact (pedido
+     explicito: nunca un segundo color de acento, el verde institucional es el unico). */
+  .site-header__cta {
+    display: none;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-hover);
+    text-decoration: none;
+    padding-bottom: 2px;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-hover) 50%, transparent);
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+  .site-header__cta:hover {
+    color: var(--accent-hover);
+    border-color: var(--accent-hover);
+  }
+
+  @media (min-width: 1024px) {
+    .site-header__cta { display: inline-block; }
+  }
 
   /* ── Toggle del menú lateral ── */
   /* Sin borde ni fondo: solo el ícono, elegante y suelto (pedido del Ingeniero) */
@@ -225,10 +269,4 @@ const openLabel = locale === 'en' ? 'Open menu' : 'Abrir menú';
   .nav-toggle.is-active .nav-toggle__bars span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
   .nav-toggle.is-active .nav-toggle__bars span:nth-child(2) { opacity: 0; }
   .nav-toggle.is-active .nav-toggle__bars span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
-
-  /* Sobre seccion clara: invertir a blanco (mismo token que el resto de la tipografia
-     del tema, nunca un hex suelto). */
-  .site-header.is-on-light .nav-toggle__bars span {
-    background-color: var(--text-primary-inverse);
-  }
 </style>

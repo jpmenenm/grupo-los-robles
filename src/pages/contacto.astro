@@ -1,0 +1,40 @@
+---
+// src/pages/contacto.astro
+// Página dedicada de Contacto — reusa ContactSection.astro tal cual (ya es un "Monolito
+// Flotante" de pantalla completa, no necesita hero propio). Sigue existiendo también al
+// pie de Home (index.astro) sin cambios -- ambos son válidos: la del menú ahora es esta
+// página real, la de Home es un CTA de cierre natural en el propio scroll.
+import Layout from '../layouts/Layout.astro';
+import ContactSection from '../components/ContactSection.astro';
+import site from '../../contracts/site.json';
+import divisions from '../data/divisions.json';
+
+const _contact = {
+  title: 'Contacto',
+  intro: 'Inversionistas, socios de marca y talento excepcional: conversemos.',
+  divisions: divisions.map((d) => d.name),
+};
+
+const _seo = {
+  title: `${_contact.title} · ${site.site.siteName}`,
+  description: _contact.intro,
+  ogImage: site.site.defaultOgImage,
+  googleFontsUrl:
+    'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&display=swap',
+};
+---
+
+<Layout
+  title={_seo.title}
+  description={_seo.description}
+  image={_seo.ogImage}
+  googleFontsUrl={_seo.googleFontsUrl}
+  schemaData={site.organizationSchema}
+>
+  <ContactSection
+    title={_contact.title}
+    intro={_contact.intro}
+    divisions={_contact.divisions}
+    locale="es"
+  />
+</Layout>

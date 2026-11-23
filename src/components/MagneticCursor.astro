@@ -1,0 +1,126 @@
+---
+// src/components/MagneticCursor.astro
+// Cursor magnético global (Componente 02 del master brief, "sistema de movimiento").
+// Punto Verde Señal que sigue al mouse con un leve retraso (lerp), se expande e invierte
+// colores sobre zonas interactivas. SOLO desktop con mouse real (pointer:fine) -- en
+// táctil nunca se monta, se conservan los indicadores de interacción convencionales.
+---
+
+<div class="magnetic-cursor" data-magnetic-cursor aria-hidden="true">
+  <span class="magnetic-cursor__dot"></span>
+</div>
+
+<script>
+  import { gsap } from 'gsap';
+
+  let cleanupCursor;
+
+  function initMagneticCursor() {
+    cleanupCursor?.();
+    const cursor = document.querySelector('[data-magnetic-cursor]');
+    if (!cursor) return;
+
+    const fine = window.matchMedia('(pointer: fine)').matches;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!fine || reduced) return; // táctil/reduced-motion: cursor nativo, sin cambios
+
+    document.documentElement.classList.add('has-magnetic-cursor');
+    cursor.classList.add('is-active');
+
+    const quickX = gsap.quickTo(cursor, 'x', { duration: 0.35, ease: 'power3.out' });
+    const quickY = gsap.quickTo(cursor, 'y', { duration: 0.35, ease: 'power3.out' });
+
+    const onMove = (e) => {
+      quickX(e.clientX);
+      quickY(e.clientY);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+
+    // Expansión + inversión sobre zonas interactivas (pedido explícito) -- delega en
+    // un solo listener (mouseover/mouseout en document, no uno por elemento) para no
+    // acumular cientos de listeners en páginas con muchos enlaces.
+    const INTERACTIVE = 'a, button, [role="button"], input, textarea, select, [data-magnetic]';
+    const onOver = (e) => {
+      if (e.target instanceof Element && e.target.closest(INTERACTIVE)) {
+        cursor.classList.add('is-hovering');
+      }
+    };
+    const onOut = (e) => {
+      if (e.target instanceof Element && e.target.closest(INTERACTIVE)) {
+        cursor.classList.remove('is-hovering');
+      }
+    };
+    document.addEventListener('mouseover', onOver);
+    document.addEventListener('mouseout', onOut);
+
+    const onLeaveWindow = () => cursor.classList.remove('is-visible');
+    const onEnterWindow = () => cursor.classList.add('is-visible');
+    document.addEventListener('mouseleave', onLeaveWindow);
+    document.addEventListener('mouseenter', onEnterWindow);
+    cursor.classList.add('is-visible');
+
+    cleanupCursor = () => {
+      window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('mouseover', onOver);
+      document.removeEventListener('mouseout', onOut);
+      document.removeEventListener('mouseleave', onLeaveWindow);
+      document.removeEventListener('mouseenter', onEnterWindow);
+      document.documentElement.classList.remove('has-magnetic-cursor');
+    };
+  }
+
+  document.addEventListener('astro:page-load', initMagneticCursor);
+  document.addEventListener('astro:before-swap', () => cleanupCursor?.());
+</script>
+
+<style>
+  /* Oculta el cursor nativo SOLO cuando el magnético está realmente activo (clase en
+     <html>, fijada por el script) -- nunca por CSS puro, así un fallo de JS jamás deja
+     al usuario sin ningún cursor visible. */
+  :global(html.has-magnetic-cursor),
+  :global(html.has-magnetic-cursor *) {
+    cursor: none !important;
+  }
+
+  .magnetic-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--z-overlay);
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s var(--ease-out);
+  }
+  .magnetic-cursor.is-active.is-visible {
+    opacity: 1;
+  }
+
+  .magnetic-cursor__dot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border-radius: var(--radius-full);
+    background-color: var(--accent);
+    transition: width 0.25s var(--ease-expo), height 0.25s var(--ease-expo),
+      margin 0.25s var(--ease-expo), background-color 0.25s var(--ease-out),
+      border-color 0.25s var(--ease-out);
+  }
+
+  /* Expansión + inversión cromática sobre zonas interactivas (pedido explícito). */
+  .magnetic-cursor.is-hovering .magnetic-cursor__dot {
+    width: 44px;
+    height: 44px;
+    margin: -22px 0 0 -22px;
+    background-color: transparent;
+    border: 1.5px solid var(--accent);
+  }
+
+  @media (pointer: coarse) {
+    .magnetic-cursor { display: none; }
+  }
+</style>

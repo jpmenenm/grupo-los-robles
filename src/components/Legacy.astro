@@ -1,0 +1,241 @@
+---
+// src/components/Legacy.astro
+// "03. LEGACY -- OUR SCALE" -- rediseño (pedido explicito, "CREATIVE RE-DIRECTION":
+// "abandonar la grilla de tarjetas convencional... las cifras deben sentirse
+// importantes, no como indicadores de un dashboard"). Reemplaza la grilla de 4
+// columnas con bordes por una composicion monumental: cada cifra es su propia fila a
+// todo el ancho, alineacion alternada (asimetria editorial, nunca una grilla pareja),
+// sobre una superficie oscura de gran profundidad (gradiente + grano, sin foto --
+// evita competir con la escala de los numeros). Cifras reales, nunca inventadas; sin
+// conteo animado llamativo ni tarjetas de glassmorphism.
+const {
+  eyebrow = '03 -- Our Scale',
+  headline = 'Dos décadas construyendo valor.',
+  stats = [],
+  locale = 'es',
+} = Astro.props;
+---
+
+<section id="alcance" class="legacy" data-gsap-section="legacy">
+  <div class="legacy__depth" aria-hidden="true"></div>
+
+  <div class="container legacy__inner">
+    <p class="legacy__eyebrow">{eyebrow}</p>
+    <h2 class="legacy__headline">{headline}</h2>
+
+    <div class="legacy__stack" data-legacy-grid>
+      {stats.map((s, i) => (
+        <div class={`legacy__stat ${i % 2 === 1 ? 'is-reverse' : ''}`} data-legacy-stat>
+          <span class="legacy__value">
+            {s.value}{s.suffix && <span class="legacy__suffix">{s.suffix}</span>}
+          </span>
+          <span class="legacy__label">{s.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  gsap.registerPlugin(ScrollTrigger);
+
+  // "Revelado de texto": mismo efecto contorno -> relleno que IndustriesGallery.astro
+  // (pedido explícito del Ingeniero Líder, video de referencia compartido) -- ver
+  // comentario largo allá, misma técnica, nunca texto duplicado en el HTML real.
+  function initHeadingReveal() {
+    const heading = document.querySelector('.legacy__headline');
+    if (!heading || heading.dataset.strokeReady) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    heading.dataset.strokeReady = 'true';
+
+    const originalMarginBottom = getComputedStyle(heading).marginBottom;
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.marginBottom = originalMarginBottom;
+    heading.parentNode.insertBefore(wrapper, heading);
+    heading.style.margin = '0';
+
+    const clone = heading.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    clone.style.position = 'absolute';
+    clone.style.inset = '0';
+    clone.style.margin = '0';
+    clone.style.color = 'transparent';
+    clone.style.webkitTextStroke = '1px color-mix(in srgb, var(--text-primary) 45%, transparent)';
+    clone.style.pointerEvents = 'none';
+
+    wrapper.appendChild(clone);
+    wrapper.appendChild(heading);
+    heading.style.position = 'relative';
+
+    gsap.set(heading, { clipPath: 'inset(0 100% 0 0)' });
+    gsap.to(heading, {
+      clipPath: 'inset(0 0% 0 0)',
+      ease: 'power3.out',
+      duration: 1.1,
+      scrollTrigger: { trigger: heading, start: 'top 85%', once: true },
+    });
+  }
+
+  function initLegacy() {
+    const section = document.querySelector('[data-gsap-section="legacy"]');
+    const stats = section?.querySelectorAll('[data-legacy-stat]');
+    if (!section || !stats?.length) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    // "Reveal discreto" (pedido explicito) -- cada fila entra por separado a medida
+    // que cruza el viewport (no todas a la vez como el grid anterior), con una leve
+    // mascara + desplazamiento horizontal segun su alineacion -- SIN animacion de
+    // conteo (regla dura: "no utilizar efectos de conteo excesivamente llamativos"),
+    // la cifra ya aparece completa, el movimiento es solo de entrada.
+    stats.forEach((stat) => {
+      const fromX = stat.classList.contains('is-reverse') ? -32 : 32;
+      gsap.set(stat, { opacity: 0, x: fromX });
+      gsap.to(stat, {
+        opacity: 1,
+        x: 0,
+        duration: 0.9,
+        ease: 'expo.out',
+        scrollTrigger: { trigger: stat, start: 'top 85%', once: true },
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    initLegacy();
+    initHeadingReveal();
+  });
+</script>
+
+<style>
+  .legacy {
+    position: relative;
+    background-color: var(--bg-primary);
+    color-scheme: dark;
+    padding-block: var(--space-2xl);
+    overflow: hidden;
+  }
+
+  /* "Superficie oscura de gran profundidad" (pedido explicito, alternativa a fondo
+     arquitectonico elegida para no competir con la escala de los numeros) -- gradiente
+     radial muy oscuro que sugiere profundidad real + grano sutil, mismo truco SVG ya
+     usado en otras secciones del sitio (ContactSection/BrandSpiral), nunca una tecnica
+     nueva. Nunca una foto aqui: la cifra es la unica protagonista visual. */
+  .legacy__depth {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: radial-gradient(
+      ellipse 70% 60% at 85% 15%,
+      color-mix(in srgb, var(--bg-secondary) 85%, transparent) 0%,
+      transparent 60%
+    );
+  }
+  .legacy__depth::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .legacy__inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  .legacy__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    /* Unico uso del verde institucional en esta seccion (regla dura: "verde
+       institucional unicamente para indicadores puntuales") -- las cifras mismas
+       quedan en --text-primary, nunca verdes. */
+    color: var(--accent-hover);
+    margin-bottom: var(--space-sm);
+  }
+
+  .legacy__headline {
+    font-family: var(--font-heading);
+    font-size: var(--text-h2);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    text-wrap: balance;
+    max-width: 20ch;
+    margin-bottom: var(--space-2xl);
+  }
+
+  /* Pila asimetrica -- cada cifra es su propia fila a todo el ancho, alineacion
+     alternada (nunca una grilla pareja), sin lineas divisorias: la presencia viene de
+     la escala + el espacio negativo, no de la estructura de tarjeta. */
+  .legacy__stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .legacy__stat {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding-block: var(--space-lg);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
+  .legacy__stat:first-child { padding-top: 0; }
+  .legacy__stat:last-child { border-bottom: none; }
+  .legacy__stat.is-reverse { flex-direction: row-reverse; }
+
+  .legacy__value {
+    font-family: var(--font-numeric);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    /* Cifras monumentales (pedido explicito, "deben sentirse importantes") pero token
+       fijo, nunca clamp()/vw -- regla permanente del proyecto. */
+    font-size: 72px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .legacy__suffix {
+    font-size: 0.5em;
+    margin-left: 0.1em;
+  }
+
+  .legacy__label {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    text-align: right;
+  }
+  .legacy__stat.is-reverse .legacy__label { text-align: left; }
+
+  @media (min-width: 768px) {
+    .legacy__value { font-size: 120px; }
+    .legacy__stat { padding-block: var(--space-xl); }
+  }
+  @media (min-width: 1280px) {
+    .legacy__value { font-size: 160px; }
+  }
+
+  @media (max-width: 767px) {
+    .legacy__stat {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: var(--space-xs);
+    }
+    .legacy__label { text-align: left !important; }
+  }
+
+  @media (max-width: 1023px) {
+    .legacy { padding-block: var(--space-xl); }
+  }
+</style>

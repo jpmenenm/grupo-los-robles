@@ -1,67 +1,85 @@
 ---
 // src/pages/index.astro — Grupo Los Robles
-// Dirección "Lujo Silencioso" — ver docs/referentes-diseno.md y docs/arquitectura-informacion.md.
-// Checkpoint: Header + SideNav ("ventana lateral") + Hero (vitrina) + Divisiones + Manifiesto.
-// Pendiente (bloqueante, no se inventa — ver docs/arquitectura-informacion.md): contacto real,
-// contenido definitivo de Inmobiliaria y Gastronomía. "Nuestro Alcance" ya tiene cifras reales
-// (provistas por el Ingeniero Líder) en _stats abajo.
+// "ART DIRECTION RESET" (pedido explicito del Ingeniero Líder, reemplaza TODAS las
+// direcciones anteriores de este archivo): la Home pasa a tener Hero, Industries,
+// Contact (+ Footer como cierre, no un momento narrativo aparte). "LESS, BUT
+// EXCEPTIONAL": se elimina todo lo que repetia fotografia/video/mensaje institucional
+// ya dicho en otra seccion (VideoReveal, ManifestoSection, ContactReveal quedaron
+// fuera -- ver git history si hace falta recuperarlos). La sección "Nuestro alcance"
+// (Legacy.astro, las 4 cifras) se eliminó por pedido explícito del Ingeniero Líder
+// ("se ven burdas", quería toda la sección afuera, no solo los números) -- el
+// componente sigue en el repo por si hace falta recuperarlo, pero no se usa en la Home.
+// Un solo verde institucional en toda la interfaz (ver theme.css).
 import Layout from '../layouts/Layout.astro';
-import Hero from '../components/Hero.astro';
-import Stats from '../components/Stats.astro';
-import IndustriesGallery from '../components/IndustriesGallery.astro';
-import VideoReveal from '../components/VideoReveal.astro';
-import ManifestoSection from '../components/ManifestoSection.astro';
-import ContactSection from '../components/ContactSection.astro';
-import ContactReveal from '../components/ContactReveal.astro';
-import VideoHero from '../components/VideoHero.astro';
+import HomeReplica from '../components/HomeReplica.astro';
 import site from '../../contracts/site.json';
 
 const _seo = {
   title: `${site.site.siteName} · ${site.site.tagline}`,
   description: site.organizationSchema.description,
   ogImage: site.site.defaultOgImage,
+  // Bodoni Moda sumado al final -- SOLO lo usa HomeReplica.astro (réplica exacta del
+  // prototipo _pruebas/robles-scroll/index.html, pedido explícito del Ingeniero
+  // Líder). Mismo fragmento exacto de la URL que el prototipo (400;500 -- el wordmark
+  // en 700 cae fuera del rango cargado a propósito, igual que en el archivo original).
   googleFontsUrl:
-    'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap',
+    'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&display=swap',
 };
 
 const _schema = site.organizationSchema;
 
-const _hero = {
-  eyebrow: 'Un holding chileno que invierte, opera y hace crecer marcas líderes.',
-  headline: 'Cinco industrias.<br/>Un mismo estándar<br/>de excelencia.',
-  images: [
-    { src: 'images/lujo-silencioso/hero-agricola.jpg', alt: 'Campos agrícolas al atardecer' },
-    { src: 'images/lujo-silencioso/hero-vestuario-hombre.jpg', alt: 'Hombre con traje sastre en interior minimalista, estilo vestuario premium' },
-    { src: 'images/lujo-silencioso/hero-inmobiliaria.jpg', alt: 'Vista aérea de terrenos para desarrollo inmobiliario junto a la cordillera' },
-    { src: 'images/lujo-silencioso/hero-gastronomia.jpg', alt: 'Mesa de alta cocina con plato gourmet y copa de vino tinto' },
-    { src: 'images/lujo-silencioso/hero-tecnologia.jpg', alt: 'Espacio de trabajo eco-brutalista con laptop y vegetación abundante' },
-  ],
-};
-
-// Cifras reales de "Nuestro Alcance" -- provistas por el Ingeniero Líder (no inventadas).
-const _stats = {
-  // Cita editorial corta (pedido explicito, reemplaza el parrafo corporativo real de
-  // arriba) -- las cifras de abajo siguen siendo 100% reales, esto es solo copywriting.
-  intro:
-    'Dos décadas forjando excelencia. Transformamos visión en valor tangible a través de cinco industrias clave.',
-  stats: [
-    { value: 150, label: 'Nuevas sucursales', suffix: '+' },
-    { value: 5, label: 'Sectores distintos' },
-    { value: 3500, label: 'Empleados', suffix: '+' },
-    { value: 40, label: 'Marcas activas', suffix: '+' },
-  ],
-};
-
+// Orden actualizado (pedido explicito del Ingeniero, brief "The Grand Entrance"):
+// Vestuario, Agrícola, Gastronomía, Tecnología, Inmobiliaria. Cascada automatica a
+// IndustriesGallery y Contacto -- consumen este mismo array.
+//
+// `reelLabel`: texto de la cortina del Hero (carrete de 5 videos) -- el operador/marca
+// real detrás de cada división, no el nombre de la industria (que ya se ve en
+// IndustriesGallery más abajo, no hay que repetirlo). Son los mismos nombres ya reales
+// en esta misma data (brands[].name de vestuario, "Valbifrut"/"Mil Sabores"/
+// "Dot Solutions" en las descripciones/ctaHref, projects[0] de inmobiliaria).
 const _divisions = [
   {
-    id: 'gastronomia',
+    id: 'vestuario',
     number: '01',
+    name: 'Vestuario Retail',
+    reelLabel: 'Boss · Hugo · Geox',
+    description:
+      'Representamos y operamos en Chile marcas globales de vestuario y accesorios, con presencia en los principales centros comerciales del país.',
+    image: 'images/lujo-silencioso/division-vestuario.jpg',
+    alt: 'Detalle de boutique de moda minimalista',
+    featured: true,
+    brands: [
+      { name: 'BOSS', locations: ['Costanera Center', 'Parque Arauco', 'Plaza Antofagasta'] },
+      { name: 'HUGO', locations: ['Parque Arauco', 'Costanera Center'] },
+      { name: 'GEOX', locations: ['Parque Arauco'] },
+    ],
+    ctaLabel: 'Visitar hugoboss.cl',
+    ctaHref: 'https://www.hugoboss.cl',
+  },
+  {
+    id: 'agricola',
+    number: '02',
+    name: 'Agrícola',
+    reelLabel: 'Valbifrut',
+    description:
+      'Con más de 30 años de trayectoria, Valbifrut es la segunda mayor exportadora de nueces de Chile. Liderazgo construido con visión de largo plazo sobre la tierra.',
+    image: 'images/lujo-silencioso/division-agricola.jpg',
+    alt: 'Nueces sobre superficie de madera, luz cálida',
+    ctaLabel: 'Visitar valbifrut.cl',
+    ctaHref: 'https://valbifrut.cl',
+  },
+  {
+    id: 'gastronomia',
+    number: '03',
     name: 'Gastronomía',
+    reelLabel: 'Mil Sabores',
     description:
       'A través de <a href="https://grupomilsabores.cl/" target="_blank" rel="noopener noreferrer"><strong>Mil Sabores</strong></a>, operamos conceptos gastronómicos con identidad propia, cada uno con un estándar de calidad y servicio consistente.',
     image: 'images/lujo-silencioso/division-gastronomia.jpg',
     alt: 'Plato de alta gastronomía servido con estilo minimalista',
     featured: true,
+    ctaLabel: 'Explorar Mil Sabores',
+    ctaHref: 'https://grupomilsabores.cl/',
     brands: [
       { name: 'Osaka', logo: 'images/logos/osaka.png' },
       { name: 'La Mar', logo: 'images/logos/la-mar.png' },
@@ -95,41 +113,17 @@ const _divisions = [
     ],
   },
   {
-    id: 'vestuario',
-    number: '02',
-    name: 'Vestuario Retail',
-    description:
-      'Representamos y operamos en Chile marcas globales de vestuario y accesorios, con presencia en los principales centros comerciales del país.',
-    image: 'images/lujo-silencioso/division-vestuario.jpg',
-    alt: 'Detalle de boutique de moda minimalista',
-    featured: true,
-    brands: [
-      { name: 'BOSS', locations: ['Costanera Center', 'Parque Arauco', 'Plaza Antofagasta'] },
-      { name: 'HUGO', locations: ['Parque Arauco', 'Costanera Center'] },
-      { name: 'GEOX', locations: ['Parque Arauco'] },
-    ],
-    ctaLabel: 'Visitar hugoboss.cl',
-    ctaHref: 'https://www.hugoboss.cl',
-  },
-  {
-    id: 'agricola',
-    number: '03',
-    name: 'Agrícola',
-    description:
-      'Con más de 30 años de trayectoria, Valbifrut es la segunda mayor exportadora de nueces de Chile. Liderazgo construido con visión de largo plazo sobre la tierra.',
-    image: 'images/lujo-silencioso/division-agricola.jpg',
-    alt: 'Nueces sobre superficie de madera, luz cálida',
-    ctaLabel: 'Visitar valbifrut.cl',
-    ctaHref: 'https://valbifrut.cl',
-  },
-  {
     id: 'tecnologia',
     number: '04',
     name: 'Soluciones Tecnológicas',
+    reelLabel: 'Dot Solutions',
     description:
       'Dot Solutions desarrolla plataformas de inteligencia de negocio, gestión de ventas y fidelización para compañías que operan a gran escala.',
-    image: 'images/lujo-silencioso/division-tecnologica.jpg',
-    alt: 'Escritorio minimalista con laptop cerrado',
+    // Foto real de oficina/sala de reuniones de Dot Solutions (infraestructura y sistemas
+    // empresariales propios, pedido explicito del brief para esta division) -- reemplaza
+    // el escritorio generico de stock.
+    image: 'images/dot-solutions/office-santiago.jpg',
+    alt: 'Sala de reuniones de Dot Solutions con dashboard de datos en pantalla',
     ctaLabel: 'Visitar dotsolutions.io',
     ctaHref: 'https://dotsolutions.io',
   },
@@ -137,6 +131,7 @@ const _divisions = [
     id: 'inmobiliaria',
     number: '05',
     name: 'Inmobiliaria',
+    reelLabel: 'Los Robles Investments',
     description:
       'Gestionamos y desarrollamos proyectos comerciales y de oficinas, priorizando ubicaciones con excelente conectividad y flujo.',
     image: 'images/lujo-silencioso/division-inmobiliario.jpg',
@@ -150,36 +145,6 @@ const _divisions = [
   },
 ];
 
-const _manifesto = {
-  lines: [
-    'Para nosotros, la excelencia',
-    'está en la simpleza.',
-    'Veinte años construyendo',
-    'con la misma convicción,',
-    'una industria a la vez.',
-  ],
-};
-
-const _contact = {
-  title: 'Contacto',
-  intro: 'Inversionistas, socios de marca y talento excepcional: conversemos.',
-  divisions: _divisions.map((d) => d.name),
-};
-
-const _cta = {
-  eyebrow: 'Para inversionistas y socios',
-  heading: 'El respaldo de veinte años, la ambición de los próximos veinte.',
-  ctaText: 'Conversemos',
-  ctaHref: '#contacto',
-};
-
-const _revealImages = [
-  'images/lujo-silencioso/division-gastronomia.jpg',
-  'images/lujo-silencioso/division-vestuario.jpg',
-  'images/lujo-silencioso/division-agricola.jpg',
-  'images/lujo-silencioso/division-tecnologica.jpg',
-  'images/lujo-silencioso/division-inmobiliario.jpg',
-];
 ---
 
 <Layout
@@ -188,33 +153,7 @@ const _revealImages = [
   image={_seo.ogImage}
   googleFontsUrl={_seo.googleFontsUrl}
   schemaData={_schema}
+  chrome={false}
 >
-  <Hero
-    eyebrow={_hero.eyebrow}
-    headline={_hero.headline}
-    images={_hero.images}
-    locale="es"
-  />
-
-  <Stats intro={_stats.intro} stats={_stats.stats} />
-
-  <IndustriesGallery label="Nuestras Divisiones" divisions={_divisions} />
-
-  <VideoReveal locale="es" />
-
-  <ManifestoSection lines={_manifesto.lines} locale="es" />
-
-  <ContactReveal
-    cta={_cta}
-    images={_revealImages}
-  />
-
-  <VideoHero />
-
-  <ContactSection
-    title={_contact.title}
-    intro={_contact.intro}
-    divisions={_contact.divisions}
-    locale="es"
-  />
+  <HomeReplica divisions={_divisions} locale="es" />
 </Layout>

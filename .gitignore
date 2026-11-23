@@ -8,6 +8,15 @@ dist/
 # no necesarios para que el sitio funcione. Quedan en disco, fuera del repo.
 _archive-media-original/
 
+# Prototipo standalone "robles-scroll" (ya integrado como HomeReplica.astro) y el
+# video de referencia que se usó para revisar el efecto de entrada -- material de
+# trabajo, no parte del sitio. Páginas de división retiradas del rollout multipágina
+# (ver HomeReplica.astro, que ahora las reemplaza) -- se archivaron en vez de borrarlas
+# por si hace falta recuperarlas, pero no van al repo.
+_pruebas/
+referencia.mov
+_archive-multipagina/
+
 # Caché local de skills de Claude Code (regenerable desde skills-lock.json) y
 # configuración local de permisos — no es parte del sitio.
 .agents/

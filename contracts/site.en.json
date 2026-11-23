@@ -12,17 +12,17 @@
     "legalName": "Grupo Los Robles",
     "email": "",
     "phone": "",
-    "address": ""
+    "address": "Huechuraba, Santiago, Chile"
   },
-  "orderUrl": "#contacto",
+  "orderUrl": "/contacto",
   "navigation": [
-    { "label": "Home",                  "href": "#inicio" },
-    { "label": "Gastronomy",            "href": "#gastronomia" },
-    { "label": "Apparel Retail",        "href": "#vestuario" },
-    { "label": "Agriculture",           "href": "#agricola" },
-    { "label": "Technology Solutions",  "href": "#tecnologia" },
-    { "label": "Real Estate",           "href": "#inmobiliaria" },
-    { "label": "Contact",               "href": "#contacto" }
+    { "label": "Home",                  "href": "/en/" },
+    { "label": "Gastronomy",            "href": "/en/#gastronomia" },
+    { "label": "Apparel Retail",        "href": "/en/#vestuario" },
+    { "label": "Agriculture",           "href": "/en/#agricola" },
+    { "label": "Technology Solutions",  "href": "/en/#tecnologia" },
+    { "label": "Real Estate",           "href": "/en/#inmobiliaria" },
+    { "label": "Contact",               "href": "/contacto" }
   ],
   "footerLinks": [
     { "label": "Dot Solutions",     "href": "https://dotsolutions.io" },
@@ -30,7 +30,7 @@
     { "label": "Valbifrut",         "href": "https://valbifrut.cl" }
   ],
   "social": [
-    { "label": "LinkedIn", "href": "https://www.linkedin.com/company/grupolosrobles/" }
+    { "label": "LinkedIn", "href": "https://www.linkedin.com/company/grupo-los-robles/" }
   ],
   "theme": {
     "--bg-primary":     "#FDFCFA",

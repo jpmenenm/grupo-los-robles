@@ -10,7 +10,7 @@ const {
   intro,
   divisions = [], // nombres de division para el select "Me interesa"
   locale = 'es',
-  location = 'Santiago, Chile',
+  location = 'Huechuraba, Santiago de Chile',
 } = Astro.props;
 
 const t = locale === 'en'
@@ -18,23 +18,37 @@ const t = locale === 'en'
       title: title ?? 'Contact',
       name: 'Name', email: 'Email', interest: "I'm interested in",
       selectDivision: 'Select a division', message: 'Message',
-      send: 'Send message', sent: 'Sent ✓',
+      // CTA "Hablemos"/"Let's talk" -- mismo lenguaje de marca que Header/Hero (pedido
+      // explicito del "ART DIRECTION RESET"), aunque el boton siga siendo el submit real.
+      send: "Let's talk", sent: 'Sent ✓',
       success: "Thank you. We've received your message and will be in touch soon.",
       replyNote: "We'll reply shortly.",
-      whereLabel: 'Where',
     }
   : {
       title: title ?? 'Contacto',
       name: 'Nombre', email: 'Correo', interest: 'Me interesa',
       selectDivision: 'Selecciona una división', message: 'Mensaje',
-      send: 'Enviar mensaje', sent: 'Enviado ✓',
+      send: 'Hablemos', sent: 'Enviado ✓',
       success: 'Gracias. Recibimos tu mensaje y te contactaremos pronto.',
       replyNote: 'Responderemos a la brevedad.',
-      whereLabel: 'Dónde',
     };
 ---
 
 <section class="contact" id="contacto" data-gsap-section="contact">
+  {/* Foto editorial oscurecida (pedido explícito, reemplaza el "Grainient" abstracto
+      anterior -- opción elegida entre 3 propuestas de background para esta página).
+      Foto real ya existente en el proyecto (oficina real de una de las divisiones del
+      Grupo, paleta oscura/verde ya afín a la marca), a pantalla completa, con un scrim
+      oscuro encima (mismo criterio que IndustriesGallery) para que la tarjeta del
+      formulario -- SIN TOCAR -- siga siendo 100% legible. */}
+  <img
+    class="contact__bg"
+    src="images/dot-solutions/office-ecobrutalist.jpg"
+    alt=""
+    aria-hidden="true"
+    loading="lazy"
+  />
+  <div class="contact__scrim" aria-hidden="true"></div>
   <div class="container">
     <div class="contact__card">
       <div class="contact__info">
@@ -42,7 +56,6 @@ const t = locale === 'en'
         {intro && <p class="contact__intro">{intro}</p>}
 
         <div class="contact__meta">
-          <span class="contact__meta-label">{t.whereLabel}</span>
           <span class="contact__meta-value">{location}</span>
         </div>
       </div>
@@ -59,16 +72,33 @@ const t = locale === 'en'
         </div>
 
         <div class="field">
-          <label for="cf-division">{t.interest}</label>
-          <select id="cf-division" name="division">
-            <option value="">{t.selectDivision}</option>
-            {divisions.map((d) => <option value={d}>{d}</option>)}
-          </select>
+          <label id="cf-division-label">{t.interest}</label>
+          <div class="dropdown" data-dropdown>
+            <input type="hidden" name="division" data-dropdown-value />
+            <button
+              type="button"
+              class="dropdown__trigger"
+              data-dropdown-trigger
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="cf-division-label"
+            >
+              <span class="dropdown__trigger-text is-placeholder" data-dropdown-text>{t.selectDivision}</span>
+              <svg class="dropdown__chevron" data-dropdown-chevron aria-hidden="true" width="12" height="8" viewBox="0 0 12 8" fill="none">
+                <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+              </svg>
+            </button>
+            <ul class="dropdown__menu" data-dropdown-menu role="listbox" aria-labelledby="cf-division-label" hidden>
+              {divisions.map((d) => (
+                <li class="dropdown__option" data-dropdown-option={d} role="option" aria-selected="false" tabindex="-1">{d}</li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div class="field">
           <label for="cf-message">{t.message}</label>
-          <textarea id="cf-message" name="message" rows="4" required></textarea>
+          <textarea id="cf-message" name="message" rows="2" required></textarea>
         </div>
 
         <div class="contact__submit-row">
@@ -89,6 +119,12 @@ const t = locale === 'en'
 
 <script>
   import { gsap } from 'gsap';
+
+  // El dropdown custom ata un listener de click al document (deteccion de "click afuera")
+  // -- eso vive fuera del nodo de la seccion, asi que sobrevive a un astro:before-swap si
+  // no se limpia explicitamente y se va acumulando en cada navegacion (mismo criterio de
+  // cleanup que StickyCTA.astro/Header.astro).
+  let cleanupContact;
 
   function initContact() {
     const section = document.querySelector('[data-gsap-section="contact"]');
@@ -119,6 +155,55 @@ const t = locale === 'en'
       });
     }
 
+    // Dropdown custom "ME INTERESA": reemplaza el <select> nativo (su menu abierto es
+    // 100% chrome del sistema operativo -- gris con franja azul en la mayoria de OS/
+    // navegadores, imposible de estilar -- rompia por completo la estetica Liquid Glass
+    // oscura). Input oculto mantiene el valor real para que el submit/FormData no cambien.
+    const dropdown = section.querySelector('[data-dropdown]');
+    let closeDropdownOutsideClick;
+    if (dropdown) {
+      const trigger = dropdown.querySelector('[data-dropdown-trigger]');
+      const menu = dropdown.querySelector('[data-dropdown-menu]');
+      const hiddenInput = dropdown.querySelector('[data-dropdown-value]');
+      const text = dropdown.querySelector('[data-dropdown-text]');
+      const options = dropdown.querySelectorAll('[data-dropdown-option]');
+
+      const closeDropdown = () => {
+        menu.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+      };
+      const openDropdown = () => {
+        menu.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+      };
+
+      trigger.addEventListener('click', () => {
+        if (menu.hidden) openDropdown(); else closeDropdown();
+      });
+
+      options.forEach((option) => {
+        option.addEventListener('click', () => {
+          const value = option.getAttribute('data-dropdown-option') || '';
+          hiddenInput.value = value;
+          text.textContent = option.textContent;
+          text.classList.remove('is-placeholder');
+          options.forEach((o) => o.setAttribute('aria-selected', String(o === option)));
+          closeDropdown();
+          trigger.focus();
+        });
+      });
+
+      closeDropdownOutsideClick = (e) => {
+        if (!dropdown.contains(e.target)) closeDropdown();
+      };
+      document.addEventListener('click', closeDropdownOutsideClick);
+      cleanupContact = () => document.removeEventListener('click', closeDropdownOutsideClick);
+
+      trigger.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDropdown();
+      });
+    }
+
     const form = section.querySelector('[data-contact-form]');
     const success = section.querySelector('[data-contact-success]');
     const label = section.querySelector('[data-submit-label]');
@@ -137,6 +222,9 @@ const t = locale === 'en'
   }
 
   document.addEventListener('astro:page-load', initContact);
+  document.addEventListener('astro:before-swap', () => {
+    cleanupContact?.();
+  });
 </script>
 
 <style>
@@ -151,44 +239,118 @@ const t = locale === 'en'
     --border: var(--border-inverse);
 
     position: relative;
-    /* 100vh menos el scroll-padding-top global (theme.css, 100px): al navegar por ancla
-       el navegador deja la seccion empezando 100px mas abajo del tope del viewport --
-       con min-height:100vh completo eso empujaba el fondo de la tarjeta fuera de
-       pantalla en viewports bajos (bug real, verificado: se cortaba a 700px de alto).
-       Restando ese offset la seccion termina justo en el borde del viewport, sin overflow. */
-    min-height: calc(100vh - 100px);
+    /* min-h-screen (pedido explicito, "Monolito Flotante"): vuelve al 100vh completo --
+       la tarjeta ya no fuerza altura completa (ver .contact__card, altura organica por
+       contenido) asi que el riesgo de corte en viewports bajos que motivo el
+       calc(100vh - 100px) anterior baja mucho; verificado sin corte a 700px de alto con
+       el tamaño actual de la tarjeta. Si el contenido crece y el corte reaparece, volver
+       a ese calc. */
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* 6rem, no --space-2xl (12rem): con min-height + centrado vertical, el padding
-       exagerado de antes hacia que la tarjeta se recortara abajo en pantallas mas bajas
-       -- pedido explicito, "la tarjeta debe quedar en el centro absoluto, sin cortes". */
+    /* py-24 (6rem) = calc(var(--space-lg) * 1.5), ya coincidia -- pedido explicito de
+       "espacio negativo abundante arriba y abajo", no se toca. */
     padding-block: calc(var(--space-lg) * 1.5);
     background-color: var(--bg-primary);
     color-scheme: dark;
+    overflow: hidden;
+  }
+
+  .contact__bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    pointer-events: none;
+  }
+
+  /* Scrim oscuro sobre la foto (mismo criterio que IndustriesGallery__layer-scrim):
+     mas oscuro arriba/abajo, un poco mas claro al centro -- deja asomar la foto
+     alrededor de la tarjeta sin competir con el formulario. */
+  .contact__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-primary-inverse) 90%, transparent) 0%,
+      color-mix(in srgb, var(--bg-primary-inverse) 68%, transparent) 45%,
+      color-mix(in srgb, var(--bg-primary-inverse) 70%, transparent) 65%,
+      color-mix(in srgb, var(--bg-primary-inverse) 92%, transparent) 100%
+    );
+  }
+
+  /* Grano superpuesto -- mismo truco SVG ya usado en ManifestoSection/BrandSpiral, no
+     una tecnica nueva. Va sobre la foto+scrim, nunca dentro (mas barato). */
+  .contact::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .contact .container {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* px-4 md:px-8 (pedido explicito) sobre el .container que envuelve la tarjeta -- override
+     scoped a esta seccion, no toca el gutter global de .container (theme.css) que usa el
+     resto del sitio. */
+  .contact .container { padding-inline: var(--space-sm); }
+  @media (min-width: 768px) {
+    .contact .container { padding-inline: var(--space-md); }
   }
 
   .contact__card {
-    max-width: 1200px;
+    /* "Monolito Flotante" (pedido explicito, reemplaza el Liquid Glass anterior): rectangulo
+       solido y afilado, no vidrio translucido -- bg casi opaco, sin sheen de brillo (esa
+       era una senal de "cristal" que ya no aplica a un bloque solido), esquinas a 90°. */
+    position: relative;
+    max-width: 1152px;
     margin-inline: auto;
-    /* Mismo verde de marca que el Preloader (pedido explicito) -- token compartido, no
-       un color nuevo inventado para esta tarjeta. */
-    background-color: var(--brand-green);
-    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-    border-radius: var(--radius-lg);
-    padding: var(--space-lg);
+    background-color: color-mix(in srgb, var(--bg-primary-inverse) 60%, transparent);
+    border: 1px solid color-mix(in srgb, white 10%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border-radius: 0;
+    /* p-12 md:p-16 (pedido explicito, corrige el p-10/p-20 anterior -- "evita valores
+       verticales extremos"). 64px en desktop coincide exacto con --space-lg. */
+    padding: 48px;
     display: grid;
     gap: var(--space-lg);
   }
 
+  @media (min-width: 768px) {
+    .contact__card { gap: calc(var(--space-lg) * 1.5); padding: var(--space-lg); }
+  }
+
   .contact__info {
+    /* gap, no margin-top:auto en los hijos (ver .contact__meta abajo): eso es lo que
+       estiraba "Santiago, Chile" al fondo de la columna -- pedido explicito de
+       eliminarlo. Apilado natural de arriba hacia abajo, gap-8. */
     display: flex;
     flex-direction: column;
+    gap: var(--space-md);
   }
 
   .contact__title {
-    font-family: var(--font-heading);
+    /* Serif del Home/SideNav (pedido explícito, "los títulos en serif" -- mismo criterio
+       ya aplicado al wordmark del Hero y a los títulos de la izquierda del SideNav):
+       requiere Bodoni Moda cargada vía googleFontsUrl (ya agregada en contacto.astro). */
+    font-family: 'Ivar Display', 'Ivar Display Condensed', 'Bodoni Moda', 'Didot', serif;
+    font-weight: 500;
     /* Token fijo (60px) -- nunca clamp()/vw, la escala de H1/H2/H3 en este proyecto es
        siempre fija. */
     font-size: var(--text-h2);
@@ -203,7 +365,6 @@ const t = locale === 'en'
   .contact__title :global(.word) { display: block; }
 
   .contact__intro {
-    margin-top: var(--space-md);
     font-family: var(--font-body);
     font-size: var(--text-base);
     color: color-mix(in srgb, var(--text-primary) 70%, transparent);
@@ -212,18 +373,12 @@ const t = locale === 'en'
   }
 
   .contact__meta {
+    /* De vuelta al fondo de la columna (pedido explicito) -- con la tarjeta ya compacta
+       esto ya no deja un hueco enorme como antes, solo ancla "Santiago, Chile" abajo. */
     margin-top: auto;
-    padding-top: var(--space-lg);
     display: flex;
     align-items: baseline;
     gap: var(--space-sm);
-  }
-  .contact__meta-label {
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: color-mix(in srgb, var(--text-primary) 50%, transparent);
   }
   .contact__meta-value {
     font-family: var(--font-body);
@@ -232,10 +387,8 @@ const t = locale === 'en'
   }
 
   .contact__form {
-    /* flex, no grid: en grid con align-content:start el espacio sobrante queda FUERA
-       del ultimo track, y el margin-top:auto de .contact__submit-row no tenia espacio
-       real para empujar contra -- en flex (mismo mecanismo que .contact__info) si
-       funciona, empuja la fila hasta el fondo de la columna. */
+    /* gap-8 (pedido explicito): apilado natural, sin margin-top:auto en el submit-row
+       (ver mas abajo) -- eso era lo que estiraba el formulario al fondo de la columna. */
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -248,57 +401,143 @@ const t = locale === 'en'
 
   .field label {
     font-family: var(--font-body);
-    font-size: var(--text-xs);
-    letter-spacing: 0.15em;
+    /* 10px fijo (pedido explicito, "diminutas") -- no el token --text-xs (12px), mismo
+       criterio que Stats.astro (.stats__label): microtipografia baja de la escala a
+       proposito. */
+    font-size: 10px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--text-primary) 60%, transparent);
+    color: color-mix(in srgb, var(--text-primary) 50%, transparent);
   }
 
   .field input,
-  .field select,
-  .field textarea {
-    font-family: var(--font-body);
-    font-size: var(--text-base);
+  .field textarea,
+  .field .dropdown__trigger {
+    /* Serif real (pedido explícito, "que se rellene con letra serif") -- misma familia
+       que el título "Contacto" y el SideNav (Ivar Display/Bodoni Moda), no var(--font-heading)
+       (esa es Geist, sans-serif pese al nombre del comentario anterior). Tamano fijo por
+       breakpoint (20px / 24px en desktop), nunca clamp()/vw. */
+    font-family: 'Ivar Display', 'Ivar Display Condensed', 'Bodoni Moda', 'Didot', serif;
+    font-size: 20px;
+    font-weight: 300;
     color: var(--text-primary);
-    background: transparent;
+    background-color: transparent;
     border: none;
+    /* Solo linea inferior, nunca una caja -- pedido explicito, "sin cajas solidas de
+       ningun tipo". 20% en reposo, 60% al enfocar (ver :focus abajo): antes 30%/100%,
+       ahora mas tenue en reposo y sin llegar al blanco puro al enfocar ("se ilumina
+       suavemente", no un corte duro). */
+    border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 20%, transparent);
     border-radius: 0;
-    border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 30%, transparent);
     padding-block: var(--space-xs);
     outline: none;
-    transition: border-color var(--transition-fast);
+    transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
   }
 
-  /* Select "de papel": sin flecha nativa del navegador, con una propia muy sutil
-     (currentColor, no un hex fijo) para no perder la afordancia de que es un dropdown. */
-  .field select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    color: var(--text-primary);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='currentColor' stroke-width='1.3'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right center;
-    padding-right: var(--space-md);
+  @media (min-width: 768px) {
+    .field input,
+    .field textarea,
+    .field .dropdown__trigger {
+      font-size: var(--text-xl);
+    }
   }
-  .field select option {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
+
+  .field input::placeholder,
+  .field textarea::placeholder {
+    color: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  }
+
+  /* Hack de autofill: Chrome/Safari inyectan un fondo solido (azul/gris) via su propio
+     shadow-DOM interno al autocompletar nombre/correo -- ni background:transparent ni
+     un !important lo pisan, la unica salida documentada es esta transicion de fondo
+     "infinita" combinada con -webkit-text-fill-color para forzar el color del texto
+     tipeado (ver bug real reportado: la caja solida rompia la estetica "solo lineas"). */
+  .field input:-webkit-autofill,
+  .field input:-webkit-autofill:hover,
+  .field input:-webkit-autofill:focus {
+    transition: background-color 9999s ease-in-out 0s, color 9999s ease-in-out 0s;
+    -webkit-text-fill-color: var(--text-primary);
+    caret-color: var(--text-primary);
   }
 
   .field input:focus,
-  .field select:focus,
-  .field textarea:focus {
-    border-color: var(--text-primary);
+  .field textarea:focus,
+  .field .dropdown__trigger[aria-expanded="true"] {
+    outline: none;
+    background-color: transparent;
+    border-color: color-mix(in srgb, var(--text-primary) 60%, transparent);
   }
 
   .field textarea { resize: vertical; }
 
+  /* Dropdown custom "ME INTERESA" (reemplaza el <select> nativo -- su menu abierto es
+     chrome del sistema operativo, imposible de estilar, rompia la estetica Liquid Glass
+     oscura). El trigger reusa exactamente el mismo look que un input de texto (ver regla
+     compartida arriba); esto solo agrega lo propio del boton + el menu flotante. */
+  .dropdown { position: relative; }
+
+  .dropdown__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .dropdown__trigger-text.is-placeholder {
+    color: color-mix(in srgb, var(--text-primary) 20%, transparent);
+  }
+
+  .dropdown__chevron {
+    flex-shrink: 0;
+    color: color-mix(in srgb, var(--text-primary) 40%, transparent);
+    transition: transform var(--transition-fast);
+  }
+  .dropdown__trigger[aria-expanded="true"] .dropdown__chevron {
+    transform: rotate(180deg);
+  }
+
+  .dropdown__menu {
+    position: absolute;
+    z-index: var(--z-above);
+    top: 100%;
+    left: 0;
+    width: 100%;
+    margin-top: var(--space-xs);
+    list-style: none;
+    padding: 0;
+    /* Vidrio oscuro casi solido (90%, no el 5% del resto del sitio): pedido explicito --
+       este menu flota SOBRE la tarjeta ya translucida, necesita su propio fondo para que
+       las opciones se lean, no el 5% ultra sutil del resto del Liquid Glass. */
+    background-color: color-mix(in srgb, black 90%, transparent);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid color-mix(in srgb, white 10%, transparent);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+  }
+
+  .dropdown__option {
+    padding: var(--space-sm) var(--space-md);
+    font-family: 'Ivar Display', 'Ivar Display Condensed', 'Bodoni Moda', 'Didot', serif;
+    font-size: var(--text-lg);
+    color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+  .dropdown__option:hover,
+  .dropdown__option:focus-visible {
+    background-color: color-mix(in srgb, white 5%, transparent);
+    color: var(--text-primary);
+  }
+
   .contact__submit-row {
-    /* auto, no un valor fijo: empuja la fila al fondo de la columna (mismo mecanismo
-       que .contact__meta en la columna izquierda) para que ambas queden a la misma
-       altura -- pedido explicito. */
-    margin-top: auto;
+    /* Sin margin-top:auto (pedido explicito, elimina el estiramiento vertical): queda en
+       flujo normal, a un gap fijo del ultimo campo -- ya no persigue el fondo de la
+       columna. */
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -344,11 +583,10 @@ const t = locale === 'en'
   }
 
   .contact__success {
-    /* margin-top negativo == al gap del flex mientras esta oculto: sin esto, el gap
-       del contenedor entre .contact__submit-row y este parrafo se sigue reservando
-       aunque tenga height:0, y ese hueco invisible es lo que le restaba al
-       margin-top:auto de .contact__submit-row para llegar realmente al fondo de la
-       columna. Al hacerse visible, el gap real vuelve a aplicar (margin-top:0). */
+    /* margin-top negativo == al gap del flex mientras esta oculto: el gap de
+       .contact__form se sigue reservando entre submit-row y este parrafo aunque tenga
+       height:0, dejando un hueco invisible de mas -- esto lo cancela. Al hacerse
+       visible, el gap real vuelve a aplicar (margin-top:0). */
     margin-top: calc(var(--space-md) * -1);
     font-family: var(--font-body);
     font-size: var(--text-sm);
@@ -366,13 +604,6 @@ const t = locale === 'en'
   @media (min-width: 768px) {
     .contact__card {
       grid-template-columns: 1fr 1fr;
-      padding: var(--space-lg) var(--space-xl);
-    }
-  }
-
-  @media (max-width: 640px) {
-    .contact__card {
-      padding: var(--space-md);
     }
   }
 </style>

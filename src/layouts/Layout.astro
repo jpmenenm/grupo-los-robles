@@ -7,6 +7,7 @@ import LogoIntro from '../components/LogoIntro.astro';
 import SideNav from '../components/SideNav.astro';
 import Footer from '../components/Footer.astro';
 import StickyCTA from '../components/StickyCTA.astro';
+import MagneticCursor from '../components/MagneticCursor.astro';
 import { ClientRouter } from 'astro:transitions';
 
 const {
@@ -16,6 +17,12 @@ const {
   googleFontsUrl,
   schemaData,
   locale = 'es',
+  // chrome=false: omite Header/LogoIntro/SideNav/Footer/StickyCTA (motor Lenis/GSAP,
+  // Preloader y MagneticCursor se mantienen igual). Uso: Home ("ENTRADA ILCAPO",
+  // pedido explícito del Ingeniero Líder de replicar 1:1 un prototipo standalone que
+  // trae su propia barra/menú/footer -- con el chrome del sitio puesto encima se
+  // duplicaría navegación y footer en la misma página.
+  chrome = true,
 } = Astro.props;
 ---
 
@@ -40,20 +47,21 @@ const {
 
   <body>
     <Preloader />
-    <Header locale={locale} />
-    <LogoIntro locale={locale} />
-    <SideNav locale={locale} />
+    {chrome && <Header locale={locale} />}
+    {chrome && <LogoIntro locale={locale} />}
+    {chrome && <SideNav locale={locale} />}
 
     <div id="smooth-wrapper">
       <div id="smooth-content">
         <main>
           <slot />
         </main>
-        <Footer locale={locale} />
+        {chrome && <Footer locale={locale} />}
       </div>
     </div>
 
-    <StickyCTA locale={locale} />
+    {chrome && <StickyCTA locale={locale} />}
+    <MagneticCursor />
 
 
     <!-- Motor de movimiento global — Lenis + GSAP -->

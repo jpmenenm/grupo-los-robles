@@ -1,36 +1,143 @@
 ---
 // src/components/IndustriesGallery.astro
-// Formato: tour numerado alternando lados (§16.3) — flujo vertical normal, sin pin ni scroll
-// horizontal. Cada división ocupa solo el alto que su contenido necesita: más legible que
-// la galería pinneada anterior, especialmente para las divisiones con más información
-// (Vestuario, Inmobiliaria). Lenis sigue dando el smooth-scroll global de la página.
+// "FIVE INDUSTRIES. ONE VISION." -- rediseño (pedido explícito del Ingeniero Líder: usó
+// una grabación de referencia de un sitio real -- corn seed company -- como base
+// explícita, "haremos el home de esa forma", y pidió video de fondo real por industria
+// en vez de fondos 3D). 5 escenas a pantalla completa, cada una con un video real en
+// loop (generado por Magnific a partir de la foto real ya existente de esa división
+// como keyframe -- nunca una escena inventada aparte).
+//
+// Pedido explícito del Ingeniero Líder: contenedor "pinneado" con videos de fondo
+// superpuestos que hacen clip-path de abajo hacia arriba ligado al progreso del scroll
+// (scrub), contenido a la izquierda sincronizado, y el titular como contorno que se
+// rellena según el progreso.
+//
+// IMPORTANTE -- por qué el "pin" NO usa GSAP ScrollTrigger: en un intento anterior,
+// crear un ScrollTrigger acá tiraba una excepción interna de GSAP ("Cannot read
+// properties of undefined (reading 'end')") durante el astro:page-load, confirmado
+// real por el Ingeniero Líder en su propio navegador (pantalla negra). La causa exacta
+// dentro de GSAP nunca se determinó, pero el pin (position:fixed manejado por
+// ScrollTrigger) fue lo único común a ambos intentos fallidos. Esta versión logra el
+// mismo efecto (contenedor fijo mientras se scrollea su alto) con CSS puro
+// (position:sticky, cero riesgo, soportado nativamente) y calcula el progreso del
+// scroll a mano (un listener + Lenis), aplicando los estilos con gsap.set/quickSetter
+// -- SIN crear ningún ScrollTrigger. Mismo resultado visual (scrub real, no "once"),
+// sin el mecanismo que crasheaba. En mobile NUNCA se fuerza este scroll-jacking
+// (CLAUDE.md §15.6.1) -- fallback vertical normal, mismo contenido real.
 const {
-  label = 'Nuestras Divisiones',
-  // [{ id, number, name, description, image, alt, ctaLabel, ctaHref, featured?: boolean,
-  //    brands?: [{ name, locations: [], note? }], projects?: string[], gallery?: string[] }]
+  // [{ id, number, name, description, image, alt, ctaLabel, ctaHref, featured?,
+  //    brands?: [{ name, locations: [], logo? }], projects?: string[] }]
   divisions = [],
+  locale = 'es',
 } = Astro.props;
+
+// El titular ya no repite "Cinco industrias."/"Five industries." -- esa línea es del
+// Hero (headlineLines en index.astro); esta sección arranca directo en la segunda
+// línea para no duplicar el mismo título dos veces en la misma página.
+const t = locale === 'en'
+  ? { eyebrow: 'Our business ecosystem', heading: 'One shared vision.', intro: 'We invest in, operate and grow businesses that turn opportunities into solid realities.' }
+  : { eyebrow: 'Nuestro ecosistema de negocios', heading: 'Una visión compartida.', intro: 'Invertimos, operamos y hacemos crecer negocios que transforman oportunidades en realidades sólidas.' };
+
 ---
 
-<section id="divisiones" class="industries" data-gsap-section="industries" data-header-theme="light">
-  <div class="industries__label container">
-    <h2 class="industries__heading">{label}</h2>
+<section id="divisiones" class="industries" data-gsap-section="industries">
+  <div class="industries__head container">
+    <p class="industries__eyebrow">{t.eyebrow}</p>
+    <h2 class="industries__heading" set:html={t.heading} />
+    <p class="industries__intro">{t.intro}</p>
   </div>
 
-  <div class="industries__list container">
+  {/* Desktop: contenedor alto (N*100svh) con un interior sticky -- el "pin" vía CSS
+      puro, ver comentario largo arriba. Los 5 videos van superpuestos (position
+      absolute, 100% x 100%) y el script recorta cada uno con clip-path de abajo hacia
+      arriba según el progreso del scroll (scrub real, no "once"). El contenido de cada
+      división va a la izquierda, superpuesto encima, sincronizado con su video. */}
+  <div class="industries__scroller" data-industries-scroller style={`--n: ${divisions.length}`}>
+    <div class="industries__sticky" data-industries-sticky>
+      <div class="industries__layers" aria-hidden="true">
+        {divisions.map((d, i) => (
+          <div class="industries__layer" data-industries-layer data-layer-index={i}>
+            <video
+              class="industries__layer-video"
+              data-layer-video
+              poster={d.image}
+              autoplay
+              muted
+              loop
+              playsinline
+            >
+              {/* Clip real generado a partir de esta misma foto (Magnific, keyframe =
+                  la foto de arriba, nunca una escena inventada aparte) -- "Agrícola"
+                  reutiliza el video de huerto ya existente del sitio
+                  (valor-tierra-nogales.mp4, copiado a agricola.mp4). */}
+              <source src={`/videos/${d.id}.mp4`} type="video/mp4" />
+            </video>
+            <span class="industries__layer-scrim" aria-hidden="true"></span>
+          </div>
+        ))}
+      </div>
+
+      <div class="industries__content">
+        {divisions.map((d, i) => (
+          <article class="industries__panel-body" data-content-item data-layer-index={i}>
+            <span class="industries__panel-num">{d.number}</span>
+            <h3 class="industries__panel-name" data-stroke-heading>{d.name}</h3>
+            <p class="industries__panel-desc" set:html={d.description} />
+
+            {d.brands && d.brands.length > 0 && (
+              <div class="industries__brand-carousel" data-brand-carousel>
+                <div class="industries__brand-track" data-brand-track>
+                  {[...d.brands, ...d.brands].map((b) => (
+                    <div class="industries__brand-slide">
+                      {b.logo
+                        ? <img class="industries__brand-logo" src={b.logo} alt={b.name} loading="lazy" />
+                        : <span class="industries__brand-name">{b.name}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {d.projects && d.projects.length > 0 && (
+              <ul class="industries__projects" role="list">
+                {d.projects.map((p) => <li>{p}</li>)}
+              </ul>
+            )}
+
+            {d.ctaLabel && d.ctaHref && (
+              <a class="industries__cta" href={d.ctaHref} target="_blank" rel="noopener noreferrer">
+                {d.ctaLabel} <span aria-hidden="true">→</span>
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  {/* Mobile (<1024px, CLAUDE.md §15.6.1): NUNCA se fuerza scroll horizontal via pin --
+      mismo contenido real, apilado verticalmente. */}
+  <div class="industries__mobile container">
     {divisions.map((d, i) => (
       <article
-        class={`industries__row ${i % 2 === 1 ? 'is-reverse' : ''} ${d.featured ? 'is-featured' : ''}`}
-        id={d.id}
+        class={`industries__row ${i % 2 === 1 ? 'is-reverse' : ''}`}
         data-industries-row
       >
-        <div class="industries__visual">
-          <div class="industries__img-frame">
-            <img class="industries__img" src={d.image} alt={d.alt} loading="lazy" data-industries-img />
-          </div>
+        <div class="industries__img-frame">
+          <video
+            class="industries__img"
+            poster={d.image}
+            autoplay
+            muted
+            loop
+            playsinline
+            aria-hidden="true"
+          >
+            <source src={`/videos/${d.id}.mp4`} type="video/mp4" />
+          </video>
         </div>
-
         <div class="industries__body" data-industries-body>
+          <span class="industries__row-num">{d.number}</span>
           <h3 class="industries__name">{d.name}</h3>
           <p class="industries__desc" set:html={d.description} />
 
@@ -54,21 +161,20 @@ const {
             </ul>
           )}
 
-          {d.gallery && d.gallery.length > 0 && (
-            <div class="industries__gallery">
-              {d.gallery.map((src) => <img src={src} alt="" loading="lazy" />)}
-            </div>
-          )}
-
           {d.ctaLabel && d.ctaHref && (
             <a class="industries__cta" href={d.ctaHref} target="_blank" rel="noopener noreferrer">
-              {d.ctaLabel} <span aria-hidden="true">↗</span>
+              {d.ctaLabel} <span aria-hidden="true">→</span>
             </a>
           )}
         </div>
       </article>
     ))}
   </div>
+
+  {/* id real anclable por division tambien en desktop (SideNav/Footer linkean a
+      "#gastronomia", etc.) -- vive fuera de .industries__mobile para no depender de
+      que ese bloque este visible; position:absolute no afecta layout. */}
+  {divisions.map((d) => <span id={d.id} class="industries__anchor" aria-hidden="true"></span>)}
 </section>
 
 <script>
@@ -77,91 +183,222 @@ const {
   gsap.registerPlugin(ScrollTrigger);
 
   let carouselTweens = [];
+  let glowCleanups = [];
 
-  function initIndustries() {
-    const rows = gsap.utils.toArray('[data-industries-row]');
-    if (!rows.length) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // RAÍZ REAL del bug ("todo en negro al hacer scroll", confirmado por el Ingeniero
+  // Líder en su propio navegador): crear un ScrollTrigger acá tiraba una excepción
+  // interna de GSAP ("Cannot read properties of undefined (reading 'end')") en medio
+  // del astro:page-load -- y un ScrollTrigger VECINO (mismo once:true, sin crashear)
+  // simplemente nunca disparaba su callback aunque el scroll ya lo hubiera cruzado por
+  // completo. Nunca se determinó la causa exacta dentro de GSAP, pero en ningún caso
+  // dependía de mi CSS/contenido (video, clip-path, pin -- todo descartado uno por
+  // uno). La salida robusta: dejar de usar ScrollTrigger para estos reveals "entra al
+  // viewport, animate una vez" y usar IntersectionObserver nativo del navegador en su
+  // lugar -- no depende en nada del refresh interno de GSAP, solo de layout real.
+  const activeIO = [];
 
-    rows.forEach((row) => {
-      const frame = row.querySelector('.industries__img-frame');
-      const img = row.querySelector('[data-industries-img]');
-      const body = row.querySelector('[data-industries-body]');
+  function revealOnce(el, play, rootMargin) {
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          play();
+          io.disconnect();
+        });
+      },
+      { threshold: 0, rootMargin },
+    );
+    io.observe(el);
+    activeIO.push(io);
+  }
 
-      if (reduced) return;
+  function initHeadingReveal() {
+    const heading = document.querySelector('.industries__heading');
+    if (!heading || heading.dataset.revealReady) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    heading.dataset.revealReady = 'true';
 
-      const tl = gsap.timeline({
-        scrollTrigger: { trigger: row, start: 'top 78%', once: true },
-        defaults: { ease: 'expo.out', duration: 0.9 },
-      });
+    gsap.set(heading, { opacity: 0, y: 24 });
+    revealOnce(
+      heading,
+      () => gsap.to(heading, { opacity: 1, y: 0, ease: 'power3.out', duration: 1 }),
+      '0px 0px -15% 0px',
+    );
+  }
 
-      if (frame) tl.from(frame, { clipPath: 'inset(0 0 100% 0)', duration: 1.1, ease: 'power3.out' }, 0);
-      if (img) tl.from(img, { scale: 1.2, duration: 1.3, ease: 'power3.out' }, 0);
-      if (body) {
-        tl.from(body.children, { y: 28, opacity: 0, stagger: 0.08, duration: 0.8 }, 0.25);
+  // Clona el heading con un contorno (-webkit-text-stroke) detrás y deja el real
+  // encima, recortado -- igual técnica ya probada en este archivo, pero esta vez el
+  // clip-path lo mueve directamente el loop de scroll (abajo), nunca un ScrollTrigger
+  // propio por heading.
+  function prepareStrokeClone(heading) {
+    if (!heading || heading.dataset.strokeReady) return;
+    heading.dataset.strokeReady = 'true';
+
+    const originalMarginBottom = getComputedStyle(heading).marginBottom;
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative';
+    wrapper.style.marginBottom = originalMarginBottom;
+    heading.parentNode.insertBefore(wrapper, heading);
+    heading.style.margin = '0';
+
+    const clone = heading.cloneNode(true);
+    clone.setAttribute('aria-hidden', 'true');
+    clone.style.position = 'absolute';
+    clone.style.inset = '0';
+    clone.style.margin = '0';
+    clone.style.color = 'transparent';
+    clone.style.webkitTextStroke = '1px color-mix(in srgb, var(--text-primary) 45%, transparent)';
+    clone.style.pointerEvents = 'none';
+
+    wrapper.appendChild(clone);
+    wrapper.appendChild(heading);
+    heading.style.position = 'relative';
+    gsap.set(heading, { clipPath: 'inset(0% 100% 0% 0%)' });
+  }
+
+  // Contenedor "pinneado" vía CSS (position:sticky, ver estilos) con los 5 videos
+  // superpuestos. El progreso del scroll (0..1 a lo largo del alto de
+  // .industries__scroller) se calcula a mano en cada evento de scroll -- NUNCA con un
+  // ScrollTrigger propio (ver nota larga al inicio del archivo). Cada video se recorta
+  // de abajo hacia arriba (clip-path inset, el top baja de 100% a 0%) ligado 1:1 al
+  // scroll; su contenido (título/descripción/CTA) cruza en fade sincronizado con el
+  // mismo progreso, y el título se rellena de contorno a sólido también ligado al
+  // mismo número.
+  let industriesMM;
+
+  function initIndustriesScroll() {
+    industriesMM?.revert();
+    industriesMM = gsap.matchMedia();
+
+    // Mobile/tablet (<1024px, CLAUDE.md §15.6.1): NUNCA scroll-jacking -- el bloque
+    // .industries__scroller entero va display:none (ver estilos), este branch no
+    // necesita tocar nada, el contenido real que se ve es .industries__mobile, con su
+    // propio reveal en initMobileReveal().
+    industriesMM.add('(max-width: 1023px)', () => () => {});
+
+    industriesMM.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
+      const scroller = document.querySelector('[data-industries-scroller]');
+      const layers = gsap.utils.toArray('[data-industries-layer]');
+      const items = gsap.utils.toArray('[data-content-item]');
+      if (!scroller || !layers.length) return () => {};
+
+      const n = layers.length;
+      const videos = layers.map((layer) => layer.querySelector('[data-layer-video]'));
+      const headings = items.map((item) => item.querySelector('[data-stroke-heading]'));
+
+      items.forEach((item) => prepareStrokeClone(item.querySelector('[data-stroke-heading]')));
+      gsap.set(layers[0], { clipPath: 'inset(0% 0% 0% 0%)' });
+      for (let i = 1; i < n; i++) gsap.set(layers[i], { clipPath: 'inset(100% 0% 0% 0%)' });
+      gsap.set(items[0], { opacity: 1 });
+      for (let i = 1; i < n; i++) gsap.set(items[i], { opacity: 0 });
+      // El heading 0 es la base -- siempre sólido, nunca arranca en contorno (solo los
+      // que todavía no "llegaron" con el scroll empiezan como contorno).
+      if (headings[0]) gsap.set(headings[0], { clipPath: 'inset(0% 0% 0% 0%)' });
+
+      let playingIndex = 0;
+      videos[0]?.play();
+
+      function update() {
+        const rect = scroller.getBoundingClientRect();
+        const total = rect.height - window.innerHeight;
+        if (total <= 0) return;
+        const raw = -rect.top;
+        const scaled = Math.min(n - 1, Math.max(0, (raw / total) * (n - 1)));
+
+        for (let i = 1; i < n; i++) {
+          const t = Math.min(1, Math.max(0, scaled - (i - 1)));
+          gsap.set(layers[i], { clipPath: `inset(${(1 - t) * 100}% 0% 0% 0%)` });
+          if (headings[i]) gsap.set(headings[i], { clipPath: `inset(0% ${(1 - t) * 100}% 0% 0%)` });
+        }
+
+        // Ventana de cruce angosta (0.4 de unidad, no 1 unidad completa): con el
+        // triángulo ancho original, el texto saliente y el entrante quedaban ambos
+        // bien visibles y superpuestos durante casi toda la transición -- ilegible,
+        // medido en navegador real. Con 0.4 el texto cruza rápido cerca del punto
+        // medio y pasa la mayor parte de su tramo solo, sin otro texto encima.
+        for (let i = 0; i < n; i++) {
+          const opacity = Math.max(0, 1 - Math.abs(scaled - i) / 0.4);
+          gsap.set(items[i], { opacity });
+        }
+
+        const activeIndex = Math.round(scaled);
+        if (activeIndex !== playingIndex) {
+          videos[playingIndex]?.pause();
+          videos[activeIndex]?.play();
+          playingIndex = activeIndex;
+        }
       }
+
+      window.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update);
+      update();
+
+      return () => {
+        window.removeEventListener('scroll', update);
+        window.removeEventListener('resize', update);
+      };
+    });
+
+    // reduced-motion (cualquier ancho): última escena en su estado final, estático.
+    industriesMM.add('(prefers-reduced-motion: reduce)', () => {
+      const layers = gsap.utils.toArray('[data-industries-layer]');
+      const items = gsap.utils.toArray('[data-content-item]');
+      if (!layers.length) return () => {};
+      layers.forEach((layer, i) => gsap.set(layer, { clipPath: i === 0 ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)' }));
+      gsap.set(items, { opacity: 0 });
+      if (items[0]) gsap.set(items[0], { opacity: 1 });
+      layers.forEach((layer, i) => {
+        const v = layer.querySelector('[data-layer-video]');
+        if (i === 0) v?.play(); else v?.pause();
+      });
+      return () => {};
     });
   }
 
-  // Snap mandatory (pedido explicito): cada <article> (division) atrae el scroll --
-  // si el usuario suelta el scroll en cualquier punto intermedio, el scroll termina de
-  // completarse solo hasta el borde superior del articulo mas cercano. Solo desktop
-  // (matchMedia): en mobile las filas suelen ser mas altas que un viewport (marquee de
-  // marcas, descripcion larga) y un snap obligatorio ahi "secuestraria" al usuario a
-  // mitad de lectura -- mismo criterio que ya aplica el proyecto a otros efectos de
-  // scroll pesados (CLAUDE.md 15.6.1).
-  let snapMM;
-  let snapResizeHandler;
-
-  function initIndustriesSnap() {
-    snapMM?.revert();
-    window.removeEventListener('resize', snapResizeHandler);
-    const list = document.querySelector('.industries__list');
+  // Mobile/tablet (<1024px, CLAUDE.md §15.6.1): NUNCA scroll-jacking -- mismo
+  // contenido real, reveal simple por fila al entrar al viewport.
+  function initMobileReveal() {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const rows = gsap.utils.toArray('[data-industries-row]');
-    if (!list || !rows.length) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (reduced) return;
 
-    snapMM = gsap.matchMedia();
-    snapMM.add('(min-width: 768px)', () => {
-      // Posicion de cada articulo como fraccion (0-1) del rango de scroll que cubre
-      // toda la lista -- centrado verticalmente en el viewport (pedido explicito: "justo
-      // en medio, no mas arriba ni mas abajo"), no con el borde superior pegado arriba.
-      const listTop = list.getBoundingClientRect().top + window.scrollY;
-      const rangePx = list.offsetHeight - window.innerHeight;
-      const viewportH = window.innerHeight;
-      const snapPoints = rows.map((row) => {
-        const rowRect = row.getBoundingClientRect();
-        const rowCenter = rowRect.top + window.scrollY + rowRect.height / 2;
-        const desiredScrollY = rowCenter - viewportH / 2;
-        return rangePx > 0 ? Math.min(Math.max((desiredScrollY - listTop) / rangePx, 0), 1) : 0;
-      });
+    rows.forEach((row) => {
+      const frame = row.querySelector('.industries__img-frame');
+      const img = row.querySelector('.industries__img');
+      const body = row.querySelector('[data-industries-body]');
 
-      const st = ScrollTrigger.create({
-        trigger: list,
-        start: 'top top',
-        end: 'bottom bottom',
-        snap: {
-          snapTo: snapPoints,
-          // Mas rapido (pedido explicito): antes tardaba 0.15s en reaccionar tras
-          // soltar el scroll y hasta 0.8s en completar el tiron -- ahora reacciona casi
-          // de inmediato y el tiron mismo es mucho mas corto.
-          duration: { min: 0.15, max: 0.4 },
-          delay: 0.03,
-          ease: 'power2.out',
+      revealOnce(
+        row,
+        () => {
+          const tlRow = gsap.timeline({ defaults: { ease: 'expo.out', duration: 0.9 } });
+          if (frame) tlRow.from(frame, { clipPath: 'inset(0 0 100% 0)', duration: 1.2, ease: 'power4.inOut' }, 0);
+          if (img) tlRow.from(img, { scale: 1.2, duration: 1.3, ease: 'power3.out' }, 0);
+          if (body) tlRow.from(body.children, { y: 28, opacity: 0, stagger: 0.08, duration: 0.8 }, 0.25);
         },
-      });
-
-      return () => st.kill();
+        '0px 0px -22% 0px',
+      );
     });
+  }
 
-    // Reconstruye los snapPoints en resize (ej. cambia el alto de una fila al
-    // reflowear el marquee de marcas) -- debounced para no recalcular en cada pixel.
-    let resizeTimer;
-    snapResizeHandler = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(initIndustriesSnap, 200);
-    };
-    window.addEventListener('resize', snapResizeHandler);
+  // Borde con brillo al cursor en cada tarjeta de mobile (mismo truco
+  // mask-composite:exclude ya usado en Stats/BrandSpiral) -- solo con mouse real. En
+  // desktop ya no hay "tarjetas" que iluminar (el contenedor sticky ocupa toda la
+  // pantalla todo el tiempo).
+  function initGlow() {
+    glowCleanups.forEach((fn) => fn());
+    glowCleanups = [];
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
+    document.querySelectorAll('[data-industries-row] .industries__img-frame').forEach((el) => {
+      const onMove = (e) => {
+        const rect = el.getBoundingClientRect();
+        el.style.setProperty('--glow-x', `${e.clientX - rect.left}px`);
+        el.style.setProperty('--glow-y', `${e.clientY - rect.top}px`);
+      };
+      el.addEventListener('pointermove', onMove);
+      glowCleanups.push(() => el.removeEventListener('pointermove', onMove));
+    });
   }
 
   function initBrandCarousels() {
@@ -171,72 +408,216 @@ const {
     if (reduced) return;
 
     document.querySelectorAll('[data-brand-track]').forEach((track) => {
-      const width = track.scrollWidth / 2; // el track está duplicado (loop continuo)
+      const width = track.scrollWidth / 2;
       if (!width) return;
-
       gsap.set(track, { x: 0 });
-      const tween = gsap.to(track, {
-        x: -width,
-        ease: 'none',
-        duration: width / 40, // velocidad constante independiente de cuántas marcas haya
-        repeat: -1,
-      });
-      carouselTweens.push(tween);
+      carouselTweens.push(gsap.to(track, { x: -width, ease: 'none', duration: width / 40, repeat: -1 }));
     });
   }
 
   document.addEventListener('astro:page-load', () => {
-    initIndustries();
+    initIndustriesScroll();
+    initMobileReveal();
+    initGlow();
     initBrandCarousels();
-    // Despues de initIndustries (que dispara animaciones de entrada con su propio
-    // ScrollTrigger.refresh implicito) y con un frame de margen para que las imagenes
-    // ya hayan reservado su alto real -- si no, snapPoints se calcula contra un layout
-    // todavia mas corto de lo que sera.
-    requestAnimationFrame(() => requestAnimationFrame(initIndustriesSnap));
+    initHeadingReveal();
   });
   document.addEventListener('astro:before-swap', () => {
+    industriesMM?.revert();
+    activeIO.forEach((io) => io.disconnect());
+    activeIO.length = 0;
+    glowCleanups.forEach((fn) => fn());
+    glowCleanups = [];
     carouselTweens.forEach((t) => t.kill());
-    snapMM?.revert();
-    window.removeEventListener('resize', snapResizeHandler);
   });
 </script>
 
 <style>
   .industries {
-    /* "Superposicion editorial" (pedido explicito): esta seccion clara se monta sobre
-       el fondo oscuro de Stats.astro con margin-top negativo + esquinas superiores
-       redondeadas, rompiendo el corte recto entre ambas. z-10 la deja por encima del
-       borde inferior (recto) de Stats. padding-top compensa el margen negativo para que
-       el titulo no quede pegado a la curva. */
     position: relative;
     z-index: 10;
-    background-color: var(--bg-primary);
+    /* Antes negro plano (var(--bg-primary) sólido) -- se veía como una franja muerta
+       entre el Hero y las escenas con video (corrección explícita: "necesito que se vea
+       sofisticado, aclara"). --bg-secondary es un paso más claro que --bg-primary, y el
+       glow radial del acento (mismo lenguaje que el scrim del Hero) le da profundidad en
+       vez de un bloque de color sin textura. */
+    background:
+      radial-gradient(130% 100% at 12% -10%, color-mix(in srgb, var(--accent) 20%, transparent) 0%, transparent 58%),
+      var(--bg-secondary);
     margin-top: -5rem;
     border-radius: 2.5rem 2.5rem 0 0;
     padding-top: var(--space-xl);
     padding-bottom: var(--space-xl);
+    /* NUNCA overflow:hidden/clip acá: cualquier valor de overflow distinto de
+       "visible" en un ANCESTRO de .industries__sticky rompe su position:sticky (regla
+       documentada de CSS, no específica de "clip" vs "hidden" como pensé en un intento
+       anterior) -- el bloque entero terminaba scrolleando fuera de pantalla en vez de
+       quedarse fijo, y TODO lo de adentro (video, un <div> de prueba lima) se veía
+       negro simplemente porque ya no estaba a la vista, no por un bug de renderizado.
+       Confirmado en navegador real con getBoundingClientRect(). Las esquinas
+       redondeadas de arriba quedan sin recortar el contenido que las toca (imperceptible
+       en la práctica, el sticky nunca llega hasta ese borde); preferible a romper el
+       scroll scrubbed. */
   }
 
   @media (min-width: 768px) {
-    .industries {
-      margin-top: -8rem;
-      border-radius: 4rem 4rem 0 0;
-      padding-top: 12rem;
-    }
+    .industries { margin-top: -8rem; border-radius: 4rem 4rem 0 0; padding-top: 10rem; }
   }
 
-  .industries__label {
-    margin-bottom: var(--space-xl);
+  .industries__anchor {
+    position: absolute;
+    top: 0;
+  }
+
+  /* Antes era --space-xl (128px): sumado al padding-top de .industries y al alto
+     natural del párrafo/indicador, dejaba un tramo muerto de scroll (pura pantalla
+     oscura vacía) antes de llegar a la pila pinneada -- medido en navegador real,
+     rompía la sensación continua de scrollytelling. */
+  .industries__head { margin-bottom: var(--space-md); }
+
+  .industries__eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-hover);
+    margin-bottom: var(--space-md);
   }
 
   .industries__heading {
     font-family: var(--font-heading);
     font-size: var(--text-h2);
+    font-weight: 500;
     letter-spacing: -0.02em;
     color: var(--text-primary);
+    margin-bottom: var(--space-md);
   }
 
-  .industries__list {
+  .industries__intro {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 46ch;
+  }
+
+  /* ════════ Desktop: contenedor sticky, 5 videos superpuestos, scrub real ════════ */
+  .industries__scroller { display: none; }
+
+  @media (min-width: 1024px) {
+    /* --n (cantidad de divisiones) lo fija el style inline -- el alto total es N
+       pantallas de scroll real para que cada transición tenga su propio tramo. */
+    .industries__scroller {
+      display: block;
+      position: relative;
+      height: calc(var(--n) * 100svh);
+    }
+
+    .industries__sticky {
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      overflow: hidden;
+      background-color: var(--bg-secondary);
+    }
+
+    .industries__layers {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* Cada capa se apila directamente sobre la anterior (orden del DOM = orden de
+       stacking) -- el script recorta cada una (clip-path inset, de abajo hacia
+       arriba) según el progreso del scroll. */
+    .industries__layer {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .industries__layer-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .industries__layer-scrim {
+      position: absolute;
+      inset: 0;
+      /* Mas cobertura solida en el 55% inferior (bug real, medido: el texto perdia
+         contraste sobre fotos claras como la de Vestuario) -- pero bajado de 95%/78%
+         (corrección explícita: "el sitio en general está muy oscuro"). El texto sigue
+         legible porque la foto ya queda cubierta en el 55% inferior donde vive el
+         contenido; lo que se aligera es la zona superior de cada escena. */
+      background: linear-gradient(
+        0deg,
+        color-mix(in srgb, var(--bg-primary) 80%, transparent) 0%,
+        color-mix(in srgb, var(--bg-primary) 58%, transparent) 55%,
+        transparent 85%
+      );
+    }
+
+    .industries__content {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    /* Los 5 bloques de contenido se superponen exactos (el script cruza su opacity),
+       alineados a la izquierda con el 50% del ancho -- pedido explícito. */
+    .industries__content .industries__panel-body {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      max-width: 50%;
+      padding: var(--space-xl) var(--container-pad) var(--space-2xl);
+    }
+
+    .industries__panel-num {
+      display: block;
+      font-family: var(--font-numeric);
+      /* +30% (64px -> 83px) -- pedido explícito del Ingeniero Líder: "aumentar los
+         tamaños de la tipografía de las industrias un 30%". Valor literal, no toca
+         ningún token global (--text-h3 etc. siguen iguales en el resto del sitio). */
+      font-size: 83px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: transparent;
+      -webkit-text-stroke: 1px color-mix(in srgb, var(--accent-hover) 70%, transparent);
+    }
+
+    .industries__panel-name {
+      font-family: var(--font-heading);
+      /* +30% de var(--text-h3) (44px) = 57px -- override literal puntual de esta
+         sección, igual criterio que panel-num arriba. */
+      font-size: 57px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-top: var(--space-xs);
+      margin-bottom: var(--space-sm);
+    }
+
+    .industries__panel-desc {
+      font-family: var(--font-body);
+      /* +30% de var(--text-base) (16px) = 20.8px. */
+      font-size: 1.3rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      max-width: 48ch;
+    }
+    .industries__panel-desc :global(a) { color: inherit; }
+  }
+
+  @media (min-width: 1280px) {
+    .industries__panel-num { font-size: 109px; }
+  }
+
+  /* ════════ Mobile/tablet (<1024px): fallback vertical, mismo contenido ════════ */
+  .industries__mobile {
     display: grid;
     gap: var(--space-2xl);
   }
@@ -247,16 +628,44 @@ const {
     align-items: center;
   }
 
-  .industries__visual {
-    position: relative;
+  .industries__row-num {
+    display: block;
+    font-family: var(--font-numeric);
+    /* +30% (40px -> 52px) -- mismo pedido que la versión desktop (panel-num) arriba. */
+    font-size: 52px;
+    font-variant-numeric: tabular-nums;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in srgb, var(--accent-hover) 60%, transparent);
+    margin-bottom: var(--space-xs);
   }
 
   .industries__img-frame {
+    position: relative;
     overflow: hidden;
     border-radius: var(--radius-lg);
     aspect-ratio: 4 / 3;
     box-shadow: var(--shadow-lg);
   }
+  .industries__img-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 2px;
+    background: radial-gradient(
+      220px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+      color-mix(in srgb, var(--accent-hover) 85%, white) 0%,
+      transparent 65%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s var(--ease-out);
+  }
+  .industries__img-frame:hover::after { opacity: 1; }
 
   .industries__img {
     width: 100%;
@@ -264,18 +673,16 @@ const {
     object-fit: cover;
     transition: transform 0.6s var(--ease-out);
   }
+  .industries__row:hover .industries__img { transform: scale(1.05); }
 
-  .industries__row:hover .industries__img {
-    transform: scale(1.05);
-  }
-
-  .industries__body {
-    min-width: 0;
-  }
+  .industries__body { min-width: 0; }
 
   .industries__name {
     font-family: var(--font-heading);
-    font-size: var(--text-h3);
+    /* +30% de var(--text-h3) (44px) = 57px -- mismo criterio que .industries__panel-name
+       (versión desktop) arriba, para que ambos layouts midan igual. */
+    font-size: 57px;
+    font-weight: 500;
     line-height: 1.05;
     letter-spacing: -0.02em;
     color: var(--text-primary);
@@ -284,57 +691,38 @@ const {
 
   .industries__desc {
     font-family: var(--font-body);
-    font-size: var(--text-base);
+    /* +30% de var(--text-base) (16px) = 20.8px. */
+    font-size: 1.3rem;
     line-height: 1.65;
     color: var(--text-secondary);
     max-width: 52ch;
   }
-  .industries__desc a {
+  .industries__desc :global(a) {
     color: inherit;
-    text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    text-decoration-color: color-mix(in srgb, var(--accent-hover) 60%, transparent);
     text-underline-offset: 0.15em;
-    transition: color var(--transition-fast);
   }
-  .industries__desc a:hover,
-  .industries__desc a:focus-visible {
-    color: var(--accent);
-  }
+  .industries__desc :global(a:hover) { color: var(--accent-hover); }
 
   .industries__cta {
     display: inline-flex;
     align-items: center;
     gap: 0.4em;
     margin-top: var(--space-md);
-    font-family: var(--font-body);
-    font-weight: 600;
-    font-size: var(--text-sm);
-    letter-spacing: 0.04em;
-    color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-    padding-bottom: 2px;
-    transition: color var(--transition-fast), border-color var(--transition-fast);
-  }
-  .industries__cta:hover {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--accent-hover);
-    border-color: var(--accent-hover);
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent-hover) 50%, transparent);
+    padding-bottom: 2px;
+    transition: color var(--transition-fast), border-color var(--transition-fast), gap var(--transition-fast);
   }
+  .industries__cta:hover { gap: 0.6em; }
 
-  /* ── Contenido enriquecido: marcas (carrusel), proyectos, mini-galería ── */
-  .industries__projects {
-    list-style: none;
-    display: grid;
-    gap: var(--space-xs);
-    margin-top: var(--space-md);
-    padding-top: var(--space-md);
-    border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-    max-width: 56ch;
-  }
-
-  /* Carrusel de marcas — contenido al ancho de la columna de texto, no de lado a lado
-     (overflow:hidden actúa de máscara). Se mueve de derecha a izquierda en loop continuo.
-     Placeholder tipográfico donde falta el logo oficial (nunca se reconstruyen isotipos de
-     terceros, CLAUDE.md §18). */
+  /* ── Marcas/proyectos (compartido por ambos layouts) ── */
   .industries__brand-carousel {
     margin-top: var(--space-md);
     padding-top: var(--space-md);
@@ -343,18 +731,12 @@ const {
     overflow: hidden;
     mask-image: linear-gradient(90deg, transparent 0, #000 5%, #000 95%, transparent 100%);
   }
-
   .industries__brand-track {
     display: flex;
     align-items: baseline;
     gap: var(--space-md);
     width: max-content;
   }
-  /* Vestuario mantiene el espaciado anterior (más amplio) entre logos */
-  #vestuario .industries__brand-track {
-    gap: var(--space-xl);
-  }
-
   .industries__brand-slide {
     display: flex;
     flex-wrap: wrap;
@@ -362,79 +744,56 @@ const {
     gap: 0.5em;
     flex: none;
   }
-
   .industries__brand-logo {
-    height: 3.2em;
+    height: 2.4em;
     width: auto;
     max-width: 100%;
     object-fit: contain;
+    filter: grayscale(1) brightness(1.6);
+    opacity: 0.85;
   }
-
   .industries__brand-name {
     font-family: var(--font-heading);
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     letter-spacing: 0.01em;
     color: var(--text-primary);
     white-space: nowrap;
   }
-  .industries__brand-locations {
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    letter-spacing: 0.03em;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
 
-  .industries__projects li {
+  .industries__projects {
+    list-style: none;
+    display: grid;
+    gap: var(--space-xs);
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    max-width: 56ch;
     font-family: var(--font-body);
     font-size: var(--text-sm);
     color: var(--text-secondary);
-    padding-left: 1em;
-    position: relative;
   }
+  .industries__projects li { padding-left: 1em; position: relative; }
   .industries__projects li::before {
     content: '•';
     position: absolute;
     left: 0;
-    color: var(--accent);
+    color: var(--accent-hover);
   }
 
-  .industries__gallery {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-    margin-top: var(--space-md);
-  }
-  .industries__gallery img {
-    width: 88px;
-    height: 64px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-    box-shadow: var(--shadow-sm);
-    transition: transform var(--transition-fast);
-  }
-  .industries__gallery img:hover {
-    transform: translateY(-3px) scale(1.03);
-  }
-
-  @media (min-width: 900px) {
-    .industries__row {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-2xl);
-    }
-    .industries__row.is-reverse .industries__visual { order: 2; }
+  @media (min-width: 900px) and (max-width: 1023px) {
+    .industries__row { grid-template-columns: 1fr 1fr; gap: var(--space-2xl); }
+    .industries__row.is-reverse .industries__img-frame { order: 2; }
     .industries__row.is-reverse .industries__body { order: 1; }
+  }
 
-    /* Protagonismo visual para divisiones destacadas (brief del Ingeniero: Gastronomía/Vestuario):
-       más columna de imagen, mismo tamaño de título que el resto de las divisiones —
-       todos los H3 del sitio miden lo mismo (--text-h3), sin variante "destacada". */
-    .industries__row.is-featured {
-      grid-template-columns: 1.3fr 1fr;
-    }
-    .industries__row.is-featured .industries__img-frame {
-      aspect-ratio: 5 / 4;
-    }
+  /* Oculta el fallback mobile en desktop -- DEBE venir despues (en el orden del
+     archivo) de ".industries__mobile { display: grid; ... }" de arriba: misma
+     especificidad (una sola clase) + regla condicional declarada ANTES perdia la
+     cascada contra la version incondicional, dejando ambos layouts (pin-stage Y
+     mobile) visibles a la vez en desktop -- bug real, encontrado via Playwright,
+     mismo patron ya documentado en este proyecto (CLAUDE.md, "Errores y fixes"). */
+  @media (min-width: 1024px) {
+    .industries__mobile { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -12,17 +12,17 @@
     "legalName": "Grupo Los Robles",
     "email": "",
     "phone": "",
-    "address": ""
+    "address": "Huechuraba, Santiago de Chile"
   },
-  "orderUrl": "#contacto",
+  "orderUrl": "/contacto",
   "navigation": [
-    { "label": "Home",                   "href": "#inicio" },
-    { "label": "Gastronomía",             "href": "#gastronomia" },
-    { "label": "Vestuario",               "href": "#vestuario" },
-    { "label": "Agrícola",                "href": "#agricola" },
-    { "label": "Soluciones Tecnológicas", "href": "#tecnologia" },
-    { "label": "Inmobiliaria",            "href": "#inmobiliaria" },
-    { "label": "Contacto",                "href": "#contacto" }
+    { "label": "Home",                   "href": "/" },
+    { "label": "Gastronomía",             "href": "/#gastronomia" },
+    { "label": "Vestuario",               "href": "/#vestuario" },
+    { "label": "Agrícola",                "href": "/#agricola" },
+    { "label": "Soluciones Tecnológicas", "href": "/#tecnologia" },
+    { "label": "Inmobiliaria",            "href": "/#inmobiliaria" },
+    { "label": "Contacto",                "href": "/contacto" }
   ],
   "footerLinks": [
     { "label": "Dot Solutions",     "href": "https://dotsolutions.io" },
@@ -30,7 +30,7 @@
     { "label": "Valbifrut",         "href": "https://valbifrut.cl" }
   ],
   "social": [
-    { "label": "LinkedIn", "href": "https://www.linkedin.com/company/grupolosrobles/" }
+    { "label": "LinkedIn", "href": "https://www.linkedin.com/company/grupo-los-robles/" }
   ],
   "theme": {
     "_comment": "Lujo Silencioso — ver docs/referentes-diseno.md. Fuente de verdad; theme.css debe reflejar estos mismos valores.",

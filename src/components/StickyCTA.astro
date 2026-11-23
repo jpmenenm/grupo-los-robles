@@ -14,27 +14,89 @@ const label = locale === 'en' ? "Let's talk" : 'Hablemos';
   data-sticky-cta
   aria-label={label}
 >
-  <span class="sticky-cta__dot" aria-hidden="true"></span>
-  {label}
+  {/* El sheen (brillo del "cristal") queda fuera del iman -- cubre toda la pill via
+      inset:0, un desplazamiento del contenido interno no debe moverlo a el tambien.
+      El iman mueve SOLO el contenedor interno (punto+label), nunca el <a> -- el <a>
+      sigue siendo 100% CSS (aparicion/ocultamiento + el lift de :hover), sin que un
+      transform inline de GSAP lo pise (bug real: un transform ganaria sobre el otro). */}
+  <span class="sticky-cta__sheen" aria-hidden="true"></span>
+  <span class="sticky-cta__magnet" data-cta-magnet>
+    <span class="sticky-cta__dot" aria-hidden="true"></span>
+    <span class="sticky-cta__label">{label}</span>
+  </span>
 </a>
 
 <script>
+  import { gsap } from 'gsap';
+
   // Igual que Header.astro: con ClientRouter este script no se re-ejecuta tras una
   // transición, así que sin envolver en astro:page-load el listener quedaba atado al
   // CTA de la página anterior (nodo desmontado) y el nuevo nunca se mostraba/ocultaba.
   let cleanupStickyCta: (() => void) | undefined;
 
+  // CTA magnético (CLAUDE.md §15.7, "CTA magnético: sigue sutilmente el cursor en
+  // desktop") -- referente concreto: patrón "Magnetic Button" de la skill de animación
+  // premium del proyecto. Solo desktop con mouse real; en touch no hay cursor que seguir.
+  function initMagnetic(trigger: HTMLElement, target: HTMLElement) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce) , (pointer: coarse)').matches) {
+      return () => {};
+    }
+    const quickX = gsap.quickTo(target, 'x', { duration: 0.5, ease: 'power3.out' });
+    const quickY = gsap.quickTo(target, 'y', { duration: 0.5, ease: 'power3.out' });
+
+    const onMove = (e: PointerEvent) => {
+      const rect = trigger.getBoundingClientRect();
+      const px = e.clientX - (rect.left + rect.width / 2);
+      const py = e.clientY - (rect.top + rect.height / 2);
+      // 0.35: desplazamiento sutil, nunca persigue el cursor del todo (se sigue
+      // leyendo como un boton fijo con "iman", no como un elemento flotante libre).
+      quickX(px * 0.35);
+      quickY(py * 0.35);
+    };
+    const onLeave = () => {
+      gsap.to(target, { x: 0, y: 0, duration: 0.6, ease: 'elastic.out(1, 0.4)' });
+    };
+
+    trigger.addEventListener('pointermove', onMove);
+    trigger.addEventListener('pointerleave', onLeave);
+    return () => {
+      trigger.removeEventListener('pointermove', onMove);
+      trigger.removeEventListener('pointerleave', onLeave);
+      gsap.set(target, { x: 0, y: 0 });
+    };
+  }
+
   function initStickyCta() {
     const cta = document.querySelector<HTMLElement>('[data-sticky-cta]');
+    const magnet = cta?.querySelector<HTMLElement>('[data-cta-magnet]');
     if (!cta) return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const cleanups: Array<() => void> = [];
+    if (magnet) cleanups.push(initMagnetic(cta, magnet));
+
+    // Oculto explicito sobre #contacto (pedido explicito, no solo el heuristico generico
+    // de "cerca del scrollHeight total" de abajo): el formulario ya tiene su propio CTA
+    // de envio, este boton flotante no debe superponerse a la tarjeta de contacto.
+    let onContact = false;
+    const contactSection = document.querySelector('[data-gsap-section="contact"]');
+    let contactObserver: IntersectionObserver | undefined;
+    if (contactSection) {
+      contactObserver = new IntersectionObserver(
+        (entries) => {
+          onContact = entries.some((entry) => entry.isIntersecting);
+          update();
+        },
+        { threshold: 0 }
+      );
+      contactObserver.observe(contactSection);
+      cleanups.push(() => contactObserver?.disconnect());
+    }
 
     const update = () => {
       const y = window.scrollY;
       const nearBottom = y + window.innerHeight > document.body.scrollHeight - 240;
       const pastHero = y > window.innerHeight * 0.8;
-      cta.classList.toggle('is-visible', pastHero && !nearBottom);
+      cta.classList.toggle('is-visible', pastHero && !nearBottom && !onContact);
     };
     update();
     window.addEventListener('scroll', update, { passive: true });
@@ -43,6 +105,43 @@ const label = locale === 'en' ? "Let's talk" : 'Hablemos';
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     });
+
+    // Mismo sensor que Header.astro (data-header-theme="light"): el vidrio blanco
+    // pierde contraste sobre una seccion clara. IndustriesGallery ya usaba
+    // data-header-theme (tambien afecta a Header); land-reveal (VideoReveal.astro,
+    // "Cinco horizontes...") suma data-cta-theme="light" -- ese video queda demasiado
+    // claro para el texto blanco pero no debe cambiar el color del Header, asi que es un
+    // atributo aparte, solo para este boton. Banda de deteccion anclada a la posicion
+    // real del boton (fixed, esquina inferior), no al header -- por eso el rootMargin se
+    // recalcula desde su propio getBoundingClientRect.
+    const lightSections = document.querySelectorAll<HTMLElement>('[data-header-theme="light"], [data-cta-theme="light"]');
+    if (lightSections.length) {
+      let themeObserver: IntersectionObserver | undefined;
+      const buildObserver = () => {
+        themeObserver?.disconnect();
+        const rect = cta.getBoundingClientRect();
+        themeObserver = new IntersectionObserver(
+          (entries) => {
+            const onLight = entries.some((entry) => entry.isIntersecting);
+            cta.classList.toggle('is-on-light', onLight);
+          },
+          { rootMargin: `-${Math.max(rect.top, 0)}px 0px -${Math.max(window.innerHeight - rect.bottom, 0)}px 0px`, threshold: 0 }
+        );
+        lightSections.forEach((section) => themeObserver!.observe(section));
+      };
+      buildObserver();
+      let resizeTimer: ReturnType<typeof setTimeout>;
+      const onResize = () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(buildObserver, 200);
+      };
+      window.addEventListener('resize', onResize, { passive: true });
+      cleanups.push(() => {
+        themeObserver?.disconnect();
+        window.removeEventListener('resize', onResize);
+        clearTimeout(resizeTimer);
+      });
+    }
 
     // Micro-pulso cada 8s para atraer el ojo
     if (!reduced) {
@@ -63,6 +162,11 @@ const label = locale === 'en' ? "Let's talk" : 'Hablemos';
 </script>
 
 <style>
+  /* Liquid Glass: pill translucida con blur real, no un fondo solido de --accent.
+     Valores (blur, bezier, ms, translateY) son los pedidos explicitos del brief --
+     no ajustar "a ojo". Base clara (sobre las secciones oscuras del sitio, la
+     mayoria); .is-on-light invierte a vidrio oscuro cuando IndustriesGallery pasa
+     por debajo (ver script, mismo sensor que Header.astro). */
   .sticky-cta {
     position: fixed;
     right: var(--space-md);
@@ -70,40 +174,118 @@ const label = locale === 'en' ? "Let's talk" : 'Hablemos';
     z-index: var(--z-modal);
     display: inline-flex;
     align-items: center;
-    gap: var(--space-xs);
-    font-family: var(--font-body);
-    font-size: var(--text-base);
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    color: var(--bg-primary);
-    background-color: var(--accent);
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-sm) var(--space-lg);
     border-radius: var(--radius-full);
     text-decoration: none;
-    box-shadow: var(--shadow-lg);
+    isolation: isolate;
+
+    background-color: color-mix(in srgb, white 5%, transparent);
+    border: 1px solid color-mix(in srgb, white 10%, transparent);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
     opacity: 0;
     transform: translateY(120%);
     pointer-events: none;
-    transition: opacity var(--transition-smooth), transform var(--transition-smooth), background-color var(--transition-fast);
+    transition: background-color 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+      border-color 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+      box-shadow 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+      transform 0.7s cubic-bezier(0.19, 1, 0.22, 1),
+      opacity var(--transition-smooth);
   }
   .sticky-cta.is-visible {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
   }
-  .sticky-cta:hover { background-color: var(--accent-hover); }
+  .sticky-cta:hover {
+    background-color: color-mix(in srgb, white 10%, transparent);
+    border-color: color-mix(in srgb, white 30%, transparent);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    transform: translateY(-4px);
+  }
+
+  /* Brillo superior (sheen): borde-luz que vende el "cristal", no contenido real */
+  .sticky-cta__sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* Contenedor que el iman desplaza (ver <script>) -- separado del <a> para que el
+     transform de GSAP nunca pise el transform de CSS (aparicion/hover) del boton. */
+  .sticky-cta__magnet {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
 
   .sticky-cta__dot {
-    width: 0.5em;
-    height: 0.5em;
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
     border-radius: var(--radius-full);
-    background-color: var(--bg-primary);
+    background-color: color-mix(in srgb, white 70%, transparent);
+    transition: background-color 0.5s cubic-bezier(0.19, 1, 0.22, 1), box-shadow 0.5s cubic-bezier(0.19, 1, 0.22, 1);
   }
+  /* Solido verde señal al hover (pedido explicito, referente Figma for Motion: "el
+     circulo magnetico se vuelve solido verde señal") -- antes blanco plano. */
+  .sticky-cta:hover .sticky-cta__dot {
+    background-color: var(--accent-hover);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent-hover) 70%, transparent);
+  }
+
+  .sticky-cta__label {
+    font-family: var(--font-body);
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: color-mix(in srgb, white 90%, transparent);
+    transition: color 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+  }
+  .sticky-cta:hover .sticky-cta__label { color: white; }
+
+  @media (min-width: 768px) {
+    .sticky-cta__label { font-size: 10px; }
+  }
+
+  /* Sobre seccion clara: mismo cristal, tinta invertida (negro en vez de blanco) */
+  .sticky-cta.is-on-light {
+    background-color: color-mix(in srgb, black 5%, transparent);
+    border-color: color-mix(in srgb, black 10%, transparent);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  .sticky-cta.is-on-light:hover {
+    background-color: color-mix(in srgb, black 10%, transparent);
+    border-color: color-mix(in srgb, black 30%, transparent);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  }
+  .sticky-cta.is-on-light .sticky-cta__sheen { border-top-color: rgba(0, 0, 0, 0.15); }
+  .sticky-cta.is-on-light .sticky-cta__dot { background-color: color-mix(in srgb, black 70%, transparent); }
+  .sticky-cta.is-on-light:hover .sticky-cta__dot {
+    background-color: black;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.25);
+  }
+  .sticky-cta.is-on-light .sticky-cta__label { color: color-mix(in srgb, black 90%, transparent); }
+  .sticky-cta.is-on-light:hover .sticky-cta__label { color: black; }
 
   .sticky-cta.is-pulsing { animation: sticky-pulse 0.7s var(--ease-out); }
   @keyframes sticky-pulse {
-    0%   { box-shadow: var(--shadow-lg), 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent); }
-    100% { box-shadow: var(--shadow-lg), 0 0 0 18px color-mix(in srgb, var(--accent) 0%, transparent); }
+    0%   { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 0 color-mix(in srgb, white 40%, transparent); }
+    100% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 18px color-mix(in srgb, white 0%, transparent); }
+  }
+  .sticky-cta.is-on-light.is-pulsing {
+    animation-name: sticky-pulse-on-light;
+  }
+  @keyframes sticky-pulse-on-light {
+    0%   { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 0 color-mix(in srgb, black 25%, transparent); }
+    100% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 18px color-mix(in srgb, black 0%, transparent); }
   }
 
   @media (max-width: 640px) {
@@ -115,6 +297,10 @@ const label = locale === 'en' ? "Let's talk" : 'Hablemos';
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .sticky-cta { transition: opacity var(--transition-fast); transform: none; }
+    .sticky-cta,
+    .sticky-cta:hover {
+      transition: opacity var(--transition-fast);
+      transform: none;
+    }
   }
 </style>

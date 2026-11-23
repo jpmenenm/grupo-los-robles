@@ -1,336 +1,319 @@
 ---
 // src/components/Hero.astro
-// Hero "vitrina" — el hero funciona como galería: 3 fotografías editoriales en crossfade
-// lento (referente: lingers.it, el hero ES la vitrina, no una sola imagen fija).
-// Momento oscuro (texto claro sobre imagen) — usa las variables *-inverse del tema.
-const {
-  eyebrow = 'Grupo Los Robles',
-  headline = 'Cinco industrias.<br/>Un mismo estándar<br/>de excelencia.',
-  images = [],
-  locale = 'es',
-} = Astro.props;
+// "ENTRADA ILCAPO" -- reemplaza "Declaración monumental" (pedido explícito del
+// Ingeniero Líder: construyó un prototipo standalone en _pruebas/robles-scroll/
+// replicando la estética de ilcapoproduction.com y pidió "quiero que este sea el home
+// de grupo los robles"). Portado 1:1 desde ese prototipo (estructura/motion/timing
+// probados ahí), con dos cambios deliberados respecto al original:
+//   1. Paleta y tipografía SIEMPRE vía las variables reales del tema (--bg-primary,
+//      --accent, --accent-hover, --text-primary/--text-secondary, --font-heading) en
+//      vez de la paleta duplicada (--bg/--green/--paper...) que el prototipo
+//      redefinía a mano -- misma regla de siempre: una sola fuente de verdad de color.
+//   2. Tipografía: var(--font-heading) (Geist) para el wordmark, NO la serif Didone/
+//      Bodoni Moda del prototipo -- el sistema tipográfico de 4 roles (Geist/Space
+//      Grotesk/Geist Mono/Inter) está fijado como regla dura del proyecto desde antes;
+//      introducir una quinta familia serif sería un giro de identidad que nadie pidió
+//      explícitamente. Mismo criterio: peso tope 600 (el prototipo usaba 700 en el
+//      wordmark, prohibido -- corregido acá).
+//
+// El header/menú propios del prototipo (`.bar`/`.menu`) y su footer (`.end`) NO se
+// portan: ya existen Header.astro/SideNav.astro/Footer.astro reales en Layout.astro,
+// con el loading (Preloader.astro) que el Ingeniero pidió explícitamente mantener --
+// duplicarlos habría repetido navegación/footer dos veces en la misma página (mismo
+// tipo de bug ya corregido antes en "Nuestras Divisiones").
+//
+// Reel: los 5 videos reales de cada división (ya existentes en /videos, incluye los
+// clips reales de marca BOSS/HUGO/GEOX y Mil Sabores generados este mismo turno) se
+// superponen como "carrete" -- uno visible a la vez, sincronizado al scroll -- en vez
+// del shader abstracto anterior (que a su vez había reemplazado el video sesgado a una
+// sola división). Esta es la solución real al pedido original ("no refleja las 5
+// industrias"): las 5 aparecen, una por una, en proporción igual.
+const { divisions = [], locale = 'es' } = Astro.props;
+
+const siteName = 'Grupo Los Robles';
+const srHeadline = locale === 'en'
+  ? `${siteName}. Five industries, one standard.`
+  : `${siteName}. Cinco industrias, un mismo estándar.`;
+const hintLabel = locale === 'en' ? 'Scroll' : 'Scroll';
+const reelLabels = divisions.map((d) => d.reelLabel ?? d.name);
 ---
 
-<section id="inicio" class="hero" data-gsap-section="hero" aria-label="Grupo Los Robles">
-  <div class="hero__vista" data-hero-vista aria-hidden="true">
-    {images.map((img, i) => (
-      <img
-        class="hero__slide"
-        class:list={[{ 'is-active': i === 0 }]}
-        src={img.src}
-        alt={img.alt ?? ''}
-        loading={i === 0 ? 'eager' : 'lazy'}
-        data-hero-slide
-      />
-    ))}
-    <div class="hero__scrim" aria-hidden="true"></div>
-  </div>
-
-  <div class="container hero__inner">
-    <a
-      href={locale === 'en' ? 'en/#inicio' : '#inicio'}
-      class="hero__logo"
-      data-hero-fade
-      aria-label="Grupo Los Robles"
-    >
-      <img src="images/LOGO-LOSrOBLES-BLANCO.webp" alt="Grupo Los Robles" />
-    </a>
-    <h1 class="hero__headline" data-hero-fade set:html={headline} />
-    <p class="hero__eyebrow" data-hero-fade>{eyebrow}</p>
-  </div>
-
-  <div class="hero__divider" aria-hidden="true"></div>
-
-  <div class="hero__scrollcue" aria-hidden="true">
-    <span></span>
-  </div>
-
-  {images.length > 1 && (
-    <div class="hero__slider-controls">
-      <button type="button" class="hero__slider-btn" data-hero-prev aria-label={locale === 'en' ? 'Previous photo' : 'Foto anterior'}>‹</button>
-      <button type="button" class="hero__slider-btn" data-hero-next aria-label={locale === 'en' ? 'Next photo' : 'Foto siguiente'}>›</button>
+<section id="inicio" class="hero" data-gsap-section="hero" aria-label={siteName}>
+  <div class="hero__stick" data-hero-stick>
+    <div class="hero__reel" data-hero-reel aria-hidden="true">
+      {divisions.map((d, i) => (
+        <video
+          class="hero__reel-video"
+          data-hero-reel-video
+          data-src={`/videos/${d.id}.mp4`}
+          poster={d.image}
+          muted
+          loop
+          playsinline
+          preload={i === 0 ? 'auto' : 'none'}
+        />
+      ))}
     </div>
-  )}
+
+    <h1 class="hero__word" data-hero-word aria-hidden="true"><span>Grupo</span><span>Los Robles</span></h1>
+    <p class="hero__sr-heading">{srHeadline}</p>
+
+    <div class="hero__curtain" data-hero-curtain aria-hidden="true">
+      <p class="hero__curtain-label" data-hero-curtain-label>{reelLabels[0]}</p>
+    </div>
+
+    <div class="hero__scrollhint" data-hero-hint aria-hidden="true">{hintLabel}</div>
+  </div>
 </section>
 
-<script>
-  import { gsap } from 'gsap';
+<script define:vars={{ reelLabels }}>
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function ease(t) { return 1 - Math.pow(1 - t, 3); }
+  function vh() { return window.innerHeight; }
 
-  let rotateTimer;
-  let cleanupHeroSlider;
+  let sectionEl, stickEl, reelEl, reelVids, wordEl, curtainEl, curtainLabelEl, hintEl;
+  let activeReel = -1;
+  let reduced = false;
+  let rafScheduled = false;
 
-  function initHeroVista() {
-    const slides = document.querySelectorAll('[data-hero-slide]');
-    if (slides.length < 2) return;
-    clearInterval(rotateTimer);
-    cleanupHeroSlider?.();
-
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    let current = Math.max(0, [...slides].findIndex((s) => s.classList.contains('is-active')));
-
-    function goTo(index) {
-      const next = (index + slides.length) % slides.length;
-      if (next === current) return;
-      slides[current].classList.remove('is-active');
-      slides[next].classList.add('is-active');
-      current = next;
-    }
-
-    function startAuto() {
-      if (reduced) return;
-      clearInterval(rotateTimer);
-      rotateTimer = setInterval(() => goTo(current + 1), 6500);
-    }
-
-    // Flechas manuales: pausan el auto-avance un ciclo entero (no lo cancelan del
-    // todo, la galeria sigue "viva") antes de reanudarlo, para que un clic no quede
-    // peleando con el timer si el usuario justo interactua cuando estaba por rotar.
-    const prevBtn = document.querySelector('[data-hero-prev]');
-    const nextBtn = document.querySelector('[data-hero-next]');
-    const onPrev = () => { goTo(current - 1); startAuto(); };
-    const onNext = () => { goTo(current + 1); startAuto(); };
-    prevBtn?.addEventListener('click', onPrev);
-    nextBtn?.addEventListener('click', onNext);
-    cleanupHeroSlider = () => {
-      prevBtn?.removeEventListener('click', onPrev);
-      nextBtn?.removeEventListener('click', onNext);
-    };
-
-    startAuto();
-
-    document.addEventListener('astro:before-swap', () => { clearInterval(rotateTimer); cleanupHeroSlider?.(); }, { once: true });
-  }
-
-  function initHeroEntrance() {
-    const section = document.querySelector('[data-gsap-section="hero"]');
-    const items = document.querySelectorAll('[data-hero-fade]');
-    if (!section || !items.length) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    gsap.from(items, {
-      y: 24,
-      opacity: 0,
-      duration: 1,
-      ease: 'expo.out',
-      stagger: 0.12,
-      delay: 0.2,
+  function fitWord() {
+    if (!wordEl) return;
+    const lines = wordEl.querySelectorAll('span');
+    const pad = window.innerWidth * 0.03;
+    const w = wordEl.clientWidth - pad * 2;
+    wordEl.style.fontSize = '100px';
+    let max = 0;
+    lines.forEach((s) => {
+      s.style.display = 'inline-block';
+      max = Math.max(max, s.getBoundingClientRect().width);
+      s.style.display = 'block';
     });
+    if (max > 0) wordEl.style.fontSize = `${(100 * w) / max}px`;
   }
 
-  document.addEventListener('astro:page-load', () => {
-    initHeroVista();
-    initHeroEntrance();
-  });
+  function setReel(i) {
+    if (i === activeReel || !reelVids.length) return;
+    activeReel = i;
+    reelVids.forEach((v, k) => {
+      if (k === i) {
+        if (!v.src && v.dataset.src) v.src = v.dataset.src;
+        v.classList.add('is-on');
+        const p = v.play();
+        if (p && p.catch) p.catch(() => {});
+      } else {
+        v.classList.remove('is-on');
+      }
+    });
+    const next = reelVids[i + 1];
+    if (next && !next.src && next.dataset.src) next.src = next.dataset.src;
+    if (curtainLabelEl) curtainLabelEl.textContent = reelLabels[i] ?? '';
+  }
+
+  function heroFrame() {
+    rafScheduled = false;
+    if (!sectionEl) return;
+    const r = sectionEl.getBoundingClientRect();
+    const total = sectionEl.offsetHeight - vh();
+    if (total <= 0) return;
+    const p = clamp(-r.top / total, 0, 1);
+
+    // Fase 1 (0-.18): franja angosta -> pantalla completa.
+    const a = ease(clamp(p / 0.18, 0, 1));
+    const top = lerp(33, 0, a);
+    const bot = lerp(37, 0, a);
+    const side = lerp(4, 0, a);
+    reelEl.style.top = `${top}%`;
+    reelEl.style.bottom = `${bot}%`;
+    reelEl.style.left = `${side}%`;
+    reelEl.style.right = `${side}%`;
+
+    const wh = wordEl.getBoundingClientRect().height || 200;
+    const y0 = vh() * 0.67;
+    const y1 = vh() * 0.46 - wh / 2;
+    wordEl.style.top = `${lerp(y0, Math.max(y1, vh() * 0.18), a)}px`;
+    if (hintEl) hintEl.style.opacity = String(1 - clamp(p / 0.08, 0, 1));
+
+    // Fase 2 (.1-.88): avanza el carrete de 5 videos.
+    const rp = clamp((p - 0.1) / 0.78, 0, 0.9999);
+    setReel(Math.floor(rp * reelVids.length));
+
+    // Fase 3 (.8-1): cortina sube y recorta el wordmark.
+    const c = ease(clamp((p - 0.8) / 0.2, 0, 1));
+    curtainEl.style.transform = `translateY(${lerp(100, 24, c)}%)`;
+    wordEl.style.transform = `translateY(${-c * vh() * 0.12}px)`;
+  }
+
+  function onScroll() {
+    if (!rafScheduled) {
+      rafScheduled = true;
+      requestAnimationFrame(heroFrame);
+    }
+  }
+  function onResize() {
+    fitWord();
+    heroFrame();
+  }
+
+  function initStatic() {
+    // Fallback obligatorio sin animación (prefers-reduced-motion): el carrete muestra
+    // la primera división a pantalla completa, sin franja/cortina/scrub.
+    reelEl.style.top = '0%';
+    reelEl.style.bottom = '0%';
+    reelEl.style.left = '0%';
+    reelEl.style.right = '0%';
+    wordEl.style.top = `${vh() * 0.46 - (wordEl.getBoundingClientRect().height || 200) / 2}px`;
+    curtainEl.style.transform = 'translateY(100%)';
+    if (hintEl) hintEl.style.opacity = '0';
+    setReel(0);
+  }
+
+  function initHero() {
+    sectionEl = document.querySelector('[data-gsap-section="hero"]');
+    stickEl = document.querySelector('[data-hero-stick]');
+    reelEl = document.querySelector('[data-hero-reel]');
+    wordEl = document.querySelector('[data-hero-word]');
+    curtainEl = document.querySelector('[data-hero-curtain]');
+    curtainLabelEl = document.querySelector('[data-hero-curtain-label]');
+    hintEl = document.querySelector('[data-hero-hint]');
+    if (!sectionEl || !reelEl || !wordEl || !curtainEl) return;
+    reelVids = [].slice.call(reelEl.querySelectorAll('[data-hero-reel-video]'));
+    reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    fitWord();
+
+    if (reduced) {
+      initStatic();
+      window.addEventListener('resize', fitWord);
+      return;
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
+      fitWord();
+      heroFrame();
+    });
+    heroFrame();
+    setReel(0);
+  }
+
+  function cleanupHero() {
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('resize', fitWord);
+    reelVids?.forEach((v) => v.pause());
+    activeReel = -1;
+  }
+
+  document.addEventListener('astro:page-load', initHero);
+  document.addEventListener('astro:before-swap', cleanupHero);
 </script>
 
 <style>
   .hero {
     position: relative;
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    height: 420vh;
+  }
+
+  .hero__stick {
+    position: sticky;
+    top: 0;
+    height: 100svh;
     overflow: hidden;
+    background-color: var(--accent);
     color-scheme: dark;
   }
 
-  .hero__vista {
+  .hero__reel {
     position: absolute;
-    inset: 0;
-    z-index: 0;
-    background-color: var(--bg-primary-inverse);
+    overflow: hidden;
+    background-color: var(--bg-primary);
+    top: 33%;
+    bottom: 37%;
+    left: 4%;
+    right: 4%;
   }
-
-  .hero__slide {
+  .hero__reel-video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    transform: scale(1.06);
-    transition: opacity 1.6s ease, transform 9s linear;
+    transition: opacity 0.6s ease;
   }
-  .hero__slide.is-active {
-    opacity: 1;
-    transform: scale(1);
-  }
+  .hero__reel-video.is-on { opacity: 1; }
 
-  .hero__scrim {
-    position: absolute;
-    inset: 0;
-    /* Reforzado: el texto vive en la mitad inferior y debe leerse bien sobre
-       cualquiera de las 3 fotos del carrusel, sin importar cuán clara sea. */
-    background:
-      linear-gradient(0deg,
-        color-mix(in srgb, var(--bg-primary-inverse) 92%, transparent) 0%,
-        color-mix(in srgb, var(--bg-primary-inverse) 55%, transparent) 45%,
-        transparent 78%),
-      linear-gradient(180deg, color-mix(in srgb, var(--bg-primary-inverse) 35%, transparent) 0%, transparent 35%);
-  }
-
-  .hero__inner {
-    position: relative;
-    z-index: 1;
-  }
-
-  .hero__eyebrow {
-    font-family: var(--font-body);
-    /* 10px base, sube a --text-xs (12px) desde 768px -- mas delicado para contrastar
-       con el serif gigante del titulo (pedido explicito). */
-    font-size: 10px;
-    /* Tracking extremo (0.3em, el doble que antes): "vital para la elegancia". */
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    /* 80% -- via color-mix sobre el token del tema, nunca un rgba(255,255,255,...)
-       hardcodeado. */
-    color: color-mix(in srgb, var(--text-primary-inverse) 80%, transparent);
-    margin-top: 1.5rem;
-    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
-  }
-
-  @media (min-width: 768px) {
-    .hero__eyebrow { font-size: var(--text-xs); }
-  }
-
-  /* Logo, ahora dentro del stack centrado del Hero -- pedido explicito: "que quede
-     cerca del titulo h1, con el mismo margen que el texto bajo el titulo" (1.5rem,
-     igual a .hero__eyebrow arriba). Vivia como barra fija independiente en
-     LogoIntro.astro; ese componente ahora solo resuelve el switch de idioma. */
-  .hero__logo {
-    display: inline-flex;
-    margin-bottom: 1.5rem;
-  }
-  .hero__logo img {
-    /* Mismo tamaño que tenia en LogoIntro.astro (-30% ya aplicado ahi antes). */
-    height: clamp(1.75rem, 4.2vw, 3.15rem);
-    width: auto;
-  }
-
-  @media (max-width: 640px) {
-    .hero__logo img {
-      height: clamp(1.4rem, 5.6vw, 1.75rem);
-    }
-  }
-
-  .hero__headline {
-    font-family: var(--font-heading);
-    text-transform: uppercase;
-    /* Tamaño "poster de cine" por breakpoints con valores FIJOS (34/50/67px mas abajo,
-       -30% sobre los 48/72/96px originales -- pedido explicito), nunca clamp()/vw -- la
-       escala tipografica de H1/H2/H3 en este proyecto es siempre fija, nunca fluida
-       (regla del Ingeniero). No se toca el token compartido --text-display (tambien lo
-       usa CTA.astro) para no afectar esa otra seccion de paso. */
-    font-size: 34px;
-    /* Mas liviano (pedido explicito, "nunca bold/semi-bold en este estilo") -- 400, no
-       500. Sigue siendo un peso real cargado via Google Fonts (ver pages/index.astro),
-       nunca font-weight:700+ (regla dura del proyecto, maximo 600 en todo el sitio). */
-    font-weight: 400;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    color: var(--text-primary-inverse);
-    text-wrap: balance;
-    /* Ancho tipo "poster" (~max-w-4xl) para que el titulo rompa en las 2 lineas ya
-       fijadas por el <br/> del copy de forma equilibrada, centrado con margin-inline:
-       auto (text-align:center del padre solo centra contenido inline, no el propio
-       bloque del h1). */
-    /* 1200px, no 900 (~max-w-4xl): a 96px de fuente, "UN MISMO ESTÁNDAR" solo no entraba
-       en una linea a 900px y se partia en 4 lineas en vez de las 3 pedidas -- ajustado
-       viendo el render real, no solo calculado. */
-    max-width: 1200px;
-    margin-inline: auto;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
-  }
-
-  @media (min-width: 768px) {
-    .hero__headline { font-size: 50px; }
-  }
-  @media (min-width: 1024px) {
-    .hero__headline { font-size: 67px; }
-  }
-
-  .hero__scrollcue {
-    position: absolute;
-    left: 50%;
-    /* Misma altura que .hero__slider-controls (pedido explicito). */
-    bottom: calc(var(--space-md) * 1.2);
-    z-index: 1;
-    transform: translateX(-50%);
-    width: 1px;
-    height: 48px;
-    background-color: color-mix(in srgb, var(--text-primary-inverse) 30%, transparent);
-    overflow: hidden;
-  }
-  .hero__scrollcue span {
-    display: block;
-    width: 100%;
-    height: 40%;
-    background-color: var(--text-primary-inverse);
-    animation: hero-scrollcue 2.2s ease-in-out infinite;
-  }
-  @keyframes hero-scrollcue {
-    0%   { transform: translateY(-100%); }
-    100% { transform: translateY(250%); }
-  }
-
-  .hero__divider {
+  .hero__word {
     position: absolute;
     left: 0;
     right: 0;
-    /* Ya no tiene que esquivar el H1 (ahora centrado, lejos del borde inferior) --
-       vuelve a ser un simple acento de borde. */
-    bottom: 32px;
-    z-index: 1;
-    width: 100%;
-    border-bottom: 1px solid color-mix(in srgb, var(--text-primary-inverse) 20%, transparent);
-    pointer-events: none;
+    top: 67%;
+    text-align: center;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    text-transform: uppercase;
+    line-height: 0.8;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    white-space: nowrap;
+    z-index: 2;
+    will-change: transform, top;
   }
+  .hero__word span { display: block; }
 
-  .hero__slider-controls {
+  .hero__sr-heading {
     position: absolute;
-    z-index: 1;
-    /* El H1 ya no esta cerca del borde inferior (ahora centrado en la pantalla) --
-       los controles vuelven a vivir en su propia esquina, independientes del texto.
-       20% mas arriba que el token base (pedido explicito). */
-    bottom: calc(var(--space-md) * 1.2);
-    right: var(--space-md);
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .hero__curtain {
+    position: absolute;
+    inset: 0;
+    background-color: var(--bg-primary);
+    transform: translateY(100%);
+    z-index: 3;
     display: flex;
-    gap: var(--space-xs);
-  }
-
-  .hero__slider-btn {
-    display: inline-flex;
-    align-items: center;
     justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
-    background: transparent;
-    border: 1px solid color-mix(in srgb, var(--text-primary-inverse) 40%, transparent);
-    border-radius: var(--radius-sm);
-    padding: var(--space-xs) var(--space-sm);
-    font-size: var(--text-lg);
-    line-height: 1;
-    color: color-mix(in srgb, var(--text-primary-inverse) 80%, transparent);
-    cursor: pointer;
-    transition: border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+    padding-top: var(--space-md);
+    will-change: transform;
   }
-  .hero__slider-btn:hover,
-  .hero__slider-btn:focus-visible {
-    border-color: var(--text-primary-inverse);
-    color: var(--text-primary-inverse);
-    background-color: color-mix(in srgb, var(--text-primary-inverse) 10%, transparent);
+  .hero__curtain-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-hover);
   }
 
-  @media (max-width: 640px) {
-    .hero__scrollcue { display: none; }
-    .hero__divider { bottom: 32px; }
-    .hero__slider-controls { bottom: calc(var(--space-sm) * 1.2); right: var(--space-sm); }
+  .hero__scrollhint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: var(--space-md);
+    text-align: center;
+    z-index: 4;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    transition: opacity 0.4s ease;
+  }
+
+  @media (max-width: 700px) {
+    .hero__scrollhint { bottom: var(--space-sm); }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero__slide { transition: opacity 0.3s linear; transform: none; }
+    .hero__reel-video, .hero__scrollhint { transition: none; }
   }
 </style>

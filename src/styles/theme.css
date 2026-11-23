@@ -3,10 +3,14 @@
    CONTRATO ESTILÍSTICO — solo editar los valores, nunca la estructura
    El Agente UI modifica únicamente este archivo para cambiar identidad visual
 
-   DIRECCIÓN ACTUAL: "Lujo Silencioso" (quiet luxury) — ver docs/referentes-diseno.md
-   y docs/arquitectura-informacion.md. Playfair Display (serif editorial) + Inter
-   (sans geométrica). Paleta casi monocromática: blanco cálido, negro profundo y un
-   único acento taupe — validada contra heladerialarrs.cl y lingers.it (§ referentes).
+   DIRECCIÓN ACTUAL: "Cinematic Corporate Luxury" — master brief del Ingeniero Líder
+   (rediseño completo de Home: Hero/Sistema de movimiento/Nuestras Divisiones). Paleta
+   "Esmeralda y Obsidiana" con tokens EXACTOS dados por el brief (nunca derivados a ojo
+   esta vez). Tipografía en 4 roles diferenciados: Geist (voz institucional, titulares
+   monumentales), Space Grotesk (SOLO datos/cifras/numeración tabular), Geist Mono
+   (telemetría/eyebrows), Inter (cuerpo, sin cambios). Radios a 2px (el brief lo pide
+   explícito, ya no 0). Los tokens *-inverse quedan igual al default (todo el sitio es
+   oscuro por defecto desde el pivote anterior).
    ============================================================ */
 
 /* Reset y base */
@@ -42,35 +46,51 @@ html {
 
 /* ─── CONTRATO: Variables que la Fábrica manipula ─────────── */
 :root {
-  /* Colores — "Lujo Silencioso": blanco cálido + negro profundo + un único acento taupe */
-  --bg-primary:      #FDFCFA;
-  --bg-secondary:    #F1EBE1;
-  --text-primary:    #14130F;
-  --text-secondary:  #6B6559;
-  --accent:          #777162;
-  --accent-hover:    #5C5749;
-  --accent-warm:     #8C7B5E;
-  --border:          #E4DDD0;
+  /* Paleta "Esmeralda y Obsidiana" -- valores EXACTOS del brief (Obsidian Forest,
+     Tempered Carbon, Chalk White, Ash Grey, Signal Green). Todo el sitio es oscuro por
+     defecto desde el pivote anterior, asi que *-inverse reutiliza los mismos valores. */
+  --bg-primary:      #080A09; /* Obsidian Forest */
+  --bg-secondary:    #131715; /* Tempered Carbon */
+  --text-primary:    #F7F9F8; /* Chalk White */
+  --text-secondary:  #8A938E; /* Ash Grey */
+  /* Verde institucional -- "CREATIVE RE-DIRECTION" (correccion prioritaria, pedido
+     explicito del Ingeniero): el muestreo de pixeles del turno anterior (#09642D,
+     tomado de public/images/logo-losRobles.webp) fue EXPLICITAMENTE RECHAZADO -- "no
+     muestrees el video/imagen para inventar un valor aproximado". El valor correcto es
+     el que ya tenia --brand-green (ver mas abajo) desde el primerisimo commit de este
+     repo (a0780cd, nunca modificado hasta el turno pasado) -- recuperado del historial
+     de git, no inventado ni re-muestreado. --accent-hover es un color-mix matematico
+     de ESTE MISMO valor (nunca un segundo hex elegido a ojo) -- variante clara solo
+     para estados de interaccion/hover y texto pequeno sobre fondo casi negro, donde el
+     verde base (muy oscuro) no alcanza el contraste minimo legible. */
+  --accent:          #2D4025;
+  --accent-hover:    color-mix(in srgb, #2D4025 65%, white 35%);
+  /* Un solo acento estructural -- no se reintroduce un segundo verde distinto. */
+  --accent-warm:     var(--accent);
+  --border:          #1E2420;
 
-  /* Sección invertida (momento oscuro — Manifiesto) */
-  --bg-primary-inverse:     #14130F;
-  --bg-secondary-inverse:   #1F1C16;
-  --text-primary-inverse:   #FBF9F5;
-  --text-secondary-inverse: #A99C87;
-  --border-inverse:         #332E24;
+  --bg-primary-inverse:     #080A09;
+  --bg-secondary-inverse:   #131715;
+  --text-primary-inverse:   #F7F9F8;
+  --text-secondary-inverse: #8A938E;
+  --border-inverse:         #1E2420;
 
-  /* Verde de marca — fijado por el Ingeniero Líder (reemplaza el valor muestreado
-     del isotipo). Uso: fondo del Preloader.astro (§ momento de carga). */
-  --brand-green: #2D4025;
+  /* Verde de marca -- mismo valor EXACTO que --accent (son, literalmente, la misma
+     variable de origen: --accent recupero este valor desde aqui, no al reves). Uso:
+     fondo de Preloader.astro/Footer.astro -- el uso que siempre tuvo, sin cambios. */
+  --brand-green: var(--accent);
 
-  /* Tipografías — las URL de Google Fonts se pasan via BaseHead.
-     Playfair Display solo hasta peso 600 (regla dura §15.3 — nunca bold). */
-  /* Cormorant Garamond como serif principal (pedido explicito, pivote de direccion de
-     arte "clasico cinematografico"); Playfair Display queda como fallback declarado
-     (tal como se pidio, "en su defecto") si Cormorant no llega a cargar a tiempo. */
-  --font-heading: 'Cormorant Garamond', 'Playfair Display', 'Georgia', serif;
+  /* Tipografías — 4 roles diferenciados (pedido explicito del brief), nunca mezclados.
+     Las URL de Google Fonts se pasan via BaseHead. Todas tope peso 600 (regla dura
+     §15.3 — nunca bold real). */
+  /* Geist: voz institucional, titulares monumentales (H1/H2/H3). */
+  --font-heading: 'Geist', sans-serif;
+  /* Space Grotesk: SOLO datos/cifras -- contadores, numeracion tabular (ej. "01/05").
+     Nunca para titulares de texto corrido (ese rol es de --font-heading arriba). */
+  --font-numeric: 'Space Grotesk', sans-serif;
   --font-body:    'Inter', -apple-system, sans-serif;
-  --font-mono:    'Courier New', monospace;
+  /* Geist Mono: telemetria, eyebrows, indicadores tecnicos. */
+  --font-mono:    'Geist Mono', 'JetBrains Mono', monospace;
 
   /* Escala tipográfica — cuerpo/UI (tamaños fijos) */
   --text-xs:   0.75rem;
@@ -91,8 +111,8 @@ html {
      grande que .industries__heading). Ya no existen variantes "-lg"/destacadas de H3:
      todos los H3 del sitio miden exactamente lo mismo, sin excepción.
      Excepción única y deliberada: el wordmark billboard de Footer.astro
-     (.site-footer__giant) NO usa estos tokens — necesita escalar con vw para caber en
-     una sola línea a cualquier ancho de pantalla; ver comentario en ese archivo. */
+     (.end-word) NO usa estos tokens — necesita escalar para caber en una sola línea a
+     cualquier ancho de pantalla (font-size en px, calculado en JS); ver ese archivo. */
   --text-display: 72px; /* H1 único por página (Hero) + cierres tipo CTA gigante */
   --text-h2:      60px; /* todo <h2> de sección: "Nuestras Divisiones", "Contacto", CTA inversionistas */
   --text-h3:      44px; /* todo <h3>: nombre de división, subtítulos de card — sin excepción, sin variante "destacada" */
@@ -117,7 +137,9 @@ html {
   --container-max: 1280px;
   --container-pad: var(--space-md);
 
-  /* Bordes — casi rectos, coherente con la sobriedad editorial del referente (Larrs/Lingers) */
+  /* Bordes — 2px (pedido explicito del brief: "bordes rectos o radios de 2px") --
+     tambien el radio exacto al que termina el monolito de la transicion del Hero.
+     --radius-full sigue en 9999px para los puntos/pills que necesitan ser circulos. */
   --radius-sm: 2px;
   --radius-md: 2px;
   --radius-lg: 2px;

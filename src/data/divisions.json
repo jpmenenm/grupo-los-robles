@@ -1,0 +1,151 @@
+[
+  {
+    "id": "gastronomia",
+    "number": "01",
+    "name": "Gastronomía",
+    "description": "A través de <a href=\"https://grupomilsabores.cl/\" target=\"_blank\" rel=\"noopener noreferrer\"><strong>Mil Sabores</strong></a>, operamos conceptos gastronómicos con identidad propia, cada uno con un estándar de calidad y servicio consistente.",
+    "image": "images/gastronomia/division-hero.webp",
+    "alt": "Pescado entero bañado en salsa de ají amarillo, plato real de La Mar",
+    "breakImage": "images/gastronomia/division-break.webp",
+    "breakAlt": "Tiradito clásico con leche de tigre y ají amarillo, plato real de Panchita",
+    "featured": true,
+    "ctaLabel": "Descubre Mil Sabores",
+    "ctaHref": "https://grupomilsabores.cl/",
+    "brands": [
+      { "name": "Osaka", "logo": "images/logos/osaka.png" },
+      { "name": "La Mar", "logo": "images/logos/la-mar.png" },
+      { "name": "Panchita", "logo": "images/logos/panchita.png" },
+      { "name": "Tanta", "logo": "images/logos/tanta.png" },
+      { "name": "Muu Steak", "logo": "images/logos/muu-steak.png" },
+      { "name": "Badass", "logo": "images/logos/badass.png" },
+      { "name": "El Japonés", "logo": "images/logos/el-japones.png" },
+      { "name": "Mamma Mia", "logo": "images/logos/mamma-mia.png" },
+      { "name": "Mesón del Marinero", "logo": "images/logos/meson-del-marinero.png" },
+      { "name": "Kairos Garden", "logo": "images/logos/kairos-garden.png" },
+      { "name": "La Piazza", "logo": "images/logos/la-piazza.png" },
+      { "name": "Take a Wok", "logo": "images/logos/take-a-wok.png" },
+      { "name": "Fuente Suiza", "logo": "images/logos/fuente-suiza.png" },
+      { "name": "Pizzería La Argentina", "logo": "images/logos/la-argentina.png" },
+      { "name": "Sky Bar & Coffee 300", "logo": "images/logos/sky-300.png" },
+      { "name": "Siete Cortes", "logo": "images/logos/siete-cortes.png" },
+      { "name": "La Sanguchera", "logo": "images/logos/la-sanguchera.png" },
+      { "name": "Dulce Luna", "logo": "images/logos/dulce-luna.png" },
+      { "name": "Lady Focaccia", "logo": "images/logos/lady-focaccia.png" },
+      { "name": "Udon", "logo": "images/logos/udon.png" },
+      { "name": "Milá", "logo": "images/logos/mila.png" },
+      { "name": "El Bodegón", "logo": "images/logos/el-bodegon.png" },
+      { "name": "Jalisco", "logo": "images/logos/jalisco.png" },
+      { "name": "Barra Chalaca", "logo": "images/logos/barra-chalaca.png" },
+      { "name": "Frida Kahlo", "logo": "images/logos/frida-kahlo.png" },
+      { "name": "Havanna", "logo": "images/logos/havanna.png" },
+      { "name": "Enrique Tomás", "logo": "images/logos/enrique-tomas.png" },
+      { "name": "Mooi", "logo": "images/logos/mooi.png" },
+      { "name": "Muu Grill", "logo": "images/logos/muu-grill.png" }
+    ]
+  },
+  {
+    "id": "vestuario",
+    "number": "02",
+    "name": "Vestuario Retail",
+    "description": "Representamos y operamos en Chile marcas globales de vestuario y accesorios, con presencia en los principales centros comerciales del país.",
+    "image": "images/lujo-silencioso/division-vestuario.jpg",
+    "alt": "Detalle de boutique de moda minimalista",
+    "breakImage": "images/lujo-silencioso/hero-vestuario-hombre.jpg",
+    "breakAlt": "Hombre con traje sastre en interior minimalista, estilo vestuario premium",
+    "featured": true,
+    "brands": [
+      { "name": "BOSS", "locations": ["Costanera Center", "Parque Arauco", "Plaza Antofagasta"] },
+      { "name": "HUGO", "locations": ["Parque Arauco", "Costanera Center"] },
+      { "name": "GEOX", "locations": ["Parque Arauco"] }
+    ],
+    "ctaLabel": "Visitar hugoboss.cl",
+    "ctaHref": "https://www.hugoboss.cl"
+  },
+  {
+    "id": "agricola",
+    "number": "03",
+    "name": "Agrícola",
+    "description": "Con más de 30 años de trayectoria, Valbifrut es la segunda mayor exportadora de nueces de Chile. Liderazgo construido con visión de largo plazo sobre la tierra.",
+    "image": "images/lujo-silencioso/division-agricola.jpg",
+    "alt": "Nueces sobre superficie de madera, luz cálida",
+    "breakImage": "images/lujo-silencioso/hero-agricola.jpg",
+    "breakAlt": "Campos agrícolas al atardecer",
+    "ctaLabel": "Visitar valbifrut.cl",
+    "ctaHref": "https://valbifrut.cl"
+  },
+  {
+    "id": "tecnologia",
+    "number": "04",
+    "name": "Soluciones Tecnológicas",
+    "description": "Dot Solutions desarrolla plataformas de inteligencia de negocio, gestión de ventas y fidelización para compañías que operan a gran escala.",
+    "image": "images/dot-solutions/terminal-code-hero.webp",
+    "alt": "Ingeniero de Dot Solutions trabajando de noche en un editor de código y una terminal, iluminación cálida bronce",
+    "scaleImage": "images/dot-solutions/office-team.jpg",
+    "scaleAlt": "Equipo de ingeniería de Dot Solutions trabajando en su oficina de Santiago",
+    "closingImage": "images/dot-solutions/office-ecobrutalist.jpg",
+    "closingAlt": "Oficina de Dot Solutions: techos de hormigón a la vista, luz natural y un muro verde junto a los puestos de trabajo",
+    "ctaLabel": "Visitar dotsolutions.io",
+    "ctaHref": "https://dotsolutions.io",
+    "stats": [
+      { "value": 300, "suffix": "+", "label": "Clientes" },
+      { "value": 75, "suffix": "+", "label": "Profesionales" },
+      { "value": 16, "suffix": "+", "label": "Años en retail" },
+      { "value": 14, "suffix": "+", "label": "Años de experiencia SAP" }
+    ],
+    "products": [
+      { "name": "SAP Business One", "slug": "sap-business-one", "category": "ERP", "description": "El ERP que integra finanzas, ventas, inventario y análisis en una sola plataforma.", "featured": true },
+      { "name": "RetailPro Prism", "slug": "retail-pro-prism", "category": "Retail omnicanal", "description": "Sistema de gestión retail que centraliza ventas, inventario y análisis para tiendas físicas, kioscos y e-commerce en una sola plataforma." },
+      { "name": "TCPOS", "slug": "tc-pos", "category": "Punto de venta", "description": "Sistema de punto de venta para restaurantes y hospitality que optimiza pedidos, cobros e inventario en tiempo real." },
+      { "name": "Loyalty", "slug": "loyalty", "category": "Fidelización", "description": "App de fidelización 100% personalizable, con geolocalización, acumulación de puntos y pagos nativos integrados." },
+      { "name": "Infraestructura Cloud", "slug": "hostdot", "category": "Infraestructura cloud", "description": "Infraestructura cloud de alto rendimiento detrás de los restaurantes y empresas más exigentes de LATAM." },
+      { "name": "Mobile One", "slug": "mobile-one", "category": "Venta móvil", "description": "Solución de venta móvil que lleva el punto de venta junto al cliente, sin depender de la caja." },
+      { "name": "Smart Order", "slug": "smart-order", "category": "Gastronomía", "description": "Plataforma SaaS que da orden, visibilidad y eficiencia a restaurantes y cadenas gastronómicas." },
+      { "name": "BiPyxis", "slug": "bipyxis", "category": "Business Intelligence", "description": "Plataforma de Business Intelligence que transforma datos financieros en decisiones ágiles y precisas." },
+      { "name": "Facturación Electrónica", "slug": "dte-facturacion-electronica", "category": "DTE", "description": "Módulo de facturación electrónica DTE que genera, administra y distribuye Documentos Tributarios Electrónicos según la normativa del SII." },
+      { "name": "ChefCloud", "slug": "chefcloud", "category": "Delivery y agregadores", "description": "Integración que conecta Rappi, PedidosYa, Uber Eats y más directo al punto de venta y a la comanda de cocina." },
+      { "name": "AyHungry", "slug": "ayhungry", "category": "Atención y reservas", "description": "App que digitaliza pedidos anticipados, reservas y gestión de mesas, con atención directa desde el celular del cliente." }
+    ],
+    "faqs": [
+      {
+        "question": "¿Cómo elijo un partner de SAP Business One en Chile?",
+        "answer": "Estar autorizado por SAP es el piso, no el criterio: todos los que pueden vender la licencia están en el directorio oficial, así que verificar el Partner ID sirve para descartar impostores, no para elegir entre partners reales. Lo que de verdad separa a uno de otro son cuatro preguntas. Primera: ¿desarrolla software propio o solo configura lo que viene de fábrica? Un partner con fábrica de software resuelve dentro del proyecto lo que un configurador tiene que responder con \"eso el ERP no lo hace\". Segunda: ¿qué nivel de certificación tiene el equipo que te va a atender, y es el mismo equipo que te vendió? La certificación es de las personas, no de la empresa, y se va con ellas. Tercera: ¿el soporte es 24×7 con mesa de ayuda propia, o horario hábil y una casilla de correo? Un ERP que se cae un domingo de alta venta no espera al lunes. Y cuarta: ¿quién responde por la infraestructura donde corre el sistema? Si el partner no tiene equipo propio de infraestructura, la respuesta a una caída va a ser \"eso lo tienes que ver con tu proveedor de servidores\". Cerrando: pide referencias de tu propia industria y pregunta explícitamente qué pasa el día después de salir a producción, que es cuando empiezan los problemas reales."
+      },
+      {
+        "question": "¿Cómo verifico que DOT Solutions es partner de SAP y de qué nivel?",
+        "answer": "DOT Solutions es Partner Gold de SAP Business One, y su SAP Partner ID es 0001726178: se puede verificar en el directorio oficial de SAP, en <a href=\"https://partnerfinder.sap.com/profile/0001726178\" target=\"_blank\" rel=\"noopener noreferrer\">partnerfinder.sap.com/profile/0001726178</a>. Ese perfil lo publica SAP, no DOT, así que la condición de partner y el nivel no dependen de lo que diga este sitio. El nivel de partnership lo asigna SAP según trayectoria, certificaciones del equipo y desempeño, y se revisa periódicamente."
+      },
+      {
+        "question": "¿Cuánto cuesta implementar SAP Business One en Chile?",
+        "answer": "El costo se arma con cuatro partidas que se presupuestan por separado, y confundirlas es la razón por la que circulan rangos tan distintos. Primero, las licencias: se cobran por usuario y cambian según el tipo (profesional o limitada) y el modelo (suscripción mensual o compra única). Segundo, la implementación: es un proyecto y se cotiza por alcance (cantidad de módulos, número de locales o sucursales, integraciones con los sistemas que ya usas y calidad de los datos a migrar). Tercero, la mantención y soporte anual, que habitualmente se cobra como porcentaje del valor de las licencias. Y cuarto, la infraestructura, que desaparece como partida si el ERP corre en la nube y aparece como servidor si va on-premise. Regla práctica al comparar: cualquier cifra publicada que no diga cuál de las cuatro partidas incluye no es comparable, porque los rangos que circulan mezclan una empresa de una sola sucursal con implementaciones multipaís."
+      },
+      {
+        "question": "¿DOT Solutions trabaja solo con empresas de retail y hospitalidad?",
+        "answer": "No. DOT Solutions implementa SAP Business One para empresas de cualquier industria (manufactura, distribución, servicios, logística, construcción, salud y consumo, entre otras). Lo que sí tiene es profundidad poco común en dos verticales: 16 años en retail y una línea completa de software propio para hospitalidad. Esa profundidad es un plus donde aplica, no un límite de a quién atiende."
+      },
+      {
+        "question": "¿Qué diferencia a DOT Solutions de otros partners SAP?",
+        "answer": "Cuatro cosas, y ninguna es ser partner: eso lo son todos los que pueden vender la licencia. Primero, DOT tiene fábrica de software propia: no solo implementa el ERP, desarrolla y mantiene el ecosistema que lo rodea (punto de venta, venta móvil, e-commerce, inventario, business intelligence, fidelización y facturación electrónica), así que lo que el estándar no cubre se construye adentro en vez de quedar como una limitación del proyecto. Segundo, todo su equipo de consultores está certificado por SAP en el estándar más alto, y es el mismo equipo que atiende después de la venta. Tercero, la mesa de ayuda es propia y opera 24×7, que es lo que corresponde cuando el cliente vende los fines de semana y en la noche. Y cuarto, tiene equipo propio de infraestructura: cuando algo falla no hay que triangular entre el partner y un proveedor de servidores, responde el mismo proveedor. El resultado práctico es que hay un solo responsable de que la operación completa funcione, no una cadena de proveedores señalándose entre ellos."
+      },
+      {
+        "question": "¿Quién es DOT Solutions y en qué países opera?",
+        "answer": "DOT Solutions es Partner Gold de SAP Business One e implementador en Chile, con operación y soporte local en 8 países de Latinoamérica: Chile, Perú, Colombia, México, Panamá, Argentina, Uruguay y Paraguay. Implementa el ERP y todo el ecosistema operativo alrededor (punto de venta, venta móvil, e-commerce, inventario, business intelligence y facturación electrónica) de un solo proveedor. Cuenta con más de 300 clientes, 14 años implementando SAP y 75 profesionales especializados."
+      }
+    ]
+  },
+  {
+    "id": "inmobiliaria",
+    "number": "05",
+    "name": "Inmobiliaria",
+    "description": "Gestionamos y desarrollamos proyectos comerciales y de oficinas, priorizando ubicaciones con excelente conectividad y flujo.",
+    "image": "images/lujo-silencioso/division-inmobiliario.jpg",
+    "alt": "Fachada arquitectónica moderna al atardecer",
+    "breakImage": "images/lujo-silencioso/hero-inmobiliaria.jpg",
+    "breakAlt": "Vista aérea de terrenos para desarrollo inmobiliario junto a la cordillera",
+    "projects": [
+      "Los Robles Investments",
+      "Inmobiliaria Los Nogales: Av. El Bosque (Daniel Hernández) N°307",
+      "Inmobiliaria la Araucaria: Centro Industrial El Belloto, Playa Madre",
+      "Neocisterna / Inversiones: Donde Gastón"
+    ]
+  }
+]

@@ -213,12 +213,17 @@ const orderUrl = site.orderUrl ?? '#';
   .sidenav__nav a:hover .sidenav__label { color: var(--text-primary); }
 
   .sidenav__label {
-    font-family: var(--font-heading);
+    /* Serif del Home (HomeReplica.astro, "ENTRADA ILCAPO") -- pedido explícito del
+       Ingeniero Líder: SOLO estos títulos de la izquierda, no el resto del menú
+       (marcas/CTA siguen con var(--font-heading)/var(--font-body) de siempre).
+       Requiere Bodoni Moda cargada -- agregada al googleFontsUrl de cada página que
+       renderiza este SideNav (todas menos Home, que ya la tenía para su propio menú). */
+    font-family: 'Ivar Display', 'Ivar Display Condensed', 'Bodoni Moda', 'Didot', serif;
     font-weight: 500;
     font-size: clamp(1.02rem, 3.06vw, 2.04rem);
     letter-spacing: 0.01em;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-hover);
     transition: color var(--transition-fast);
   }
 
@@ -240,7 +245,7 @@ const orderUrl = site.orderUrl ?? '#';
     text-decoration: none;
     transition: color var(--transition-fast);
   }
-  .sidenav__group a:hover { color: var(--accent); }
+  .sidenav__group a:hover { color: var(--accent-hover); }
 
   .sidenav__foot-row {
     display: flex;
@@ -258,13 +263,13 @@ const orderUrl = site.orderUrl ?? '#';
     text-decoration: none;
     transition: color var(--transition-fast);
   }
-  .sidenav__social a:hover { color: var(--accent); }
+  .sidenav__social a:hover { color: var(--accent-hover); }
 
   .sidenav__cta {
     font-family: var(--font-body);
     font-weight: 600;
     font-size: var(--text-sm);
-    color: var(--accent);
+    color: var(--accent-hover);
     text-decoration: none;
   }
   .sidenav__cta:hover { color: var(--accent-hover); }

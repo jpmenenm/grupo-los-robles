@@ -704,6 +704,9 @@ const backLabel = locale === 'en' ? 'Back to map' : 'Volver al mapa';
     cursor: pointer;
     outline: none;
   }
+  /* Verde señal (--accent), no --accent-warm (pedido explicito, "puntos de sucursales
+     en verde señal brillante" -- estilo "Dark Matter"): las sucursales reales son el
+     dato mas importante del mapa, se ganan el unico acento brillante de la escena. */
   :global(.territory__pin-glow) {
     position: absolute;
     inset: 0;
@@ -711,7 +714,7 @@ const backLabel = locale === 'en' ? 'Back to map' : 'Volver al mapa';
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background-color: var(--accent-warm);
+    background-color: var(--accent);
     filter: blur(3px);
     pointer-events: none;
     animation: territory-breathe 3.2s ease-in-out infinite;
@@ -723,7 +726,7 @@ const backLabel = locale === 'en' ? 'Back to map' : 'Volver al mapa';
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background-color: var(--accent-warm);
+    background-color: var(--accent);
     pointer-events: none;
     transition: transform var(--transition-fast);
   }

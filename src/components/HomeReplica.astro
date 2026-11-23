@@ -1,0 +1,465 @@
+---
+// src/components/HomeReplica.astro
+// "ENTRADA ILCAPO" -- réplica 1:1 del prototipo standalone construido por el Ingeniero
+// Líder en _pruebas/robles-scroll/index.html (estética ilcapoproduction.com). Pedido
+// explícito: "necesito que sea exactamente igual a este [prototipo], exactamente
+// igual, sumando el loading, y manteniendo la tipografia de [prototipo]". Reemplaza
+// POR COMPLETO el Hero/IndustriesGallery/ContactSection anteriores de la Home -- esta
+// es ahora la Home entera (barra + menú + portada + 5 proyectos + cierre), igual al
+// archivo fuente, con dos únicas adiciones necesarias para vivir dentro del sitio real:
+//   1. El Preloader del sitio (Layout.astro, <chrome=false>) se mantiene por encima
+//      (pedido explícito "no quiero quitar el loading de la pagina, mantenlo").
+//   2. Los links "Contacto" del prototipo apuntaban a localhost:4321/#contacto (el
+//      propio dev-server donde se probó) -- acá apuntan a /contacto/, la página real
+//      del sitio (el prototipo ya no vive aislado).
+//
+// EXCEPCIÓN DE TIPOGRAFÍA/PESO (autorizada explícitamente por el Ingeniero Líder para
+// ESTE componente): el wordmark usa font-weight:700 y la familia Ivar Display/Bodoni
+// Moda, igual que el prototipo -- la regla dura del proyecto (CLAUDE.md §15.3, peso
+// máximo 600) queda reemplazada acá por la instrucción puntual y explícita de replicar
+// el archivo "exactamente igual...manteniendo la tipografia". No se propaga a ningún
+// otro componente del sitio.
+//
+// Colores: SIEMPRE las variables reales del tema (--bg-primary/--accent/--accent-hover/
+// --text-primary/--text-secondary) -- son, pixel a pixel, los mismos valores que el
+// prototipo redefinía a mano como --bg/--green/--green-lt/--paper/--mute.
+import Footer from './Footer.astro';
+
+const {
+  // [{ id, number, name, reelLabel, description, ctaLabel?, ctaHref? }]
+  divisions = [],
+  locale = 'es',
+} = Astro.props;
+
+const reelLabels = divisions.map((d) => d.reelLabel ?? d.name);
+const MARGINS = [26, 19, 13, 7, 2];
+
+const t = locale === 'en'
+  ? { contacto: 'Contact', menu: 'Menu', cerrar: 'Close', scroll: 'Scroll', contactoTitle: 'Contact' }
+  : { contacto: 'Contacto', menu: 'Menú', cerrar: 'Cerrar', scroll: 'Scroll', contactoTitle: 'Contacto' };
+---
+
+<div class="ilcapo">
+  <header class="bar" id="bar" data-ilcapo-bar>
+    <a href="/contacto/">{t.contacto}</a>
+    <a class="logo" href="#top" aria-label="Grupo Los Robles">
+      <img src="/images/LOGO-LOSrOBLES-BLANCO.webp" alt="Grupo Los Robles" />
+    </a>
+    <button type="button" id="menuBtn" data-ilcapo-menu-btn aria-expanded="false">{t.menu}</button>
+  </header>
+
+  <nav class="menu" id="menu" data-ilcapo-menu aria-label={locale === 'en' ? 'Industries' : 'Industrias'}>
+    <button type="button" class="close" id="menuClose" data-ilcapo-menu-close>{t.cerrar}</button>
+    {divisions.map((d) => (
+      <a href={`#${d.id}`}>{d.name}</a>
+    ))}
+    <a href="#cierre">{t.contactoTitle}</a>
+  </nav>
+
+  <div id="top">
+    <section class="hero" id="hero" data-ilcapo-hero aria-label="Grupo Los Robles">
+      <div class="hero-stick" id="heroStick">
+        <div class="reel" id="reel" data-ilcapo-reel>
+          {divisions.map((d, i) => (
+            <video muted loop playsinline preload="metadata" data-src={`/videos/${d.id}.mp4`} />
+          ))}
+        </div>
+        <h1 class="word" id="heroWord" data-ilcapo-word><span>Grupo</span><span>Los Robles</span></h1>
+        <div class="curtain" id="curtain" data-ilcapo-curtain>
+          <p id="curtainLabel" data-ilcapo-curtain-label>{reelLabels[0]}</p>
+        </div>
+        <div class="scrollhint" id="hint" data-ilcapo-hint>{t.scroll}</div>
+      </div>
+    </section>
+
+    {divisions.map((d, i) => (
+      <section class="proj" id={d.id} data-bg={i % 2 === 0 ? 'black' : 'green'} data-m={MARGINS[i] ?? 2}>
+        <div class="proj-stick">
+          <div class="p-label">{reelLabels[i]}</div>
+          <div class="p-frame">
+            <video muted loop playsinline preload="none" data-src={`/videos/${d.id}.mp4`} />
+          </div>
+          <h2 class="p-title" data-p-title>
+            {d.name.split(' ').map((word, wi, words) => (
+              <Fragment>
+                <span class="p-title__word">
+                  {word.split('').map((ch) => (
+                    <span class="p-title__mask"><span class="p-title__char">{ch}</span></span>
+                  ))}
+                </span>
+                {wi < words.length - 1 && ' '}
+              </Fragment>
+            ))}
+          </h2>
+          <div class="p-caption">
+            <p set:html={d.description} />
+            {d.ctaHref && (
+              <a href={d.ctaHref} target="_blank" rel="noopener noreferrer">{d.ctaLabel}</a>
+            )}
+          </div>
+        </div>
+      </section>
+    ))}
+
+    <Footer locale={locale} />
+  </div>
+</div>
+
+<script define:vars={{ reelLabels }}>
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function ease(t) { return 1 - Math.pow(1 - t, 3); }
+  function vh() { return window.innerHeight; }
+
+  let bar, heroWord, hero, reel, reelVids, curtain, curtainLabel, hint;
+  let projs, vidIO;
+  let activeReel = -1;
+  let reduced = false;
+  let ticking = false;
+  let menu, menuBtn, menuClose, menuLinks, menuKeydown;
+
+  function fit(el, pad) {
+    if (!el) return;
+    const lines = el.querySelectorAll('span');
+    const w = el.clientWidth - pad * 2;
+    el.style.fontSize = '100px';
+    let max = 0;
+    // offsetWidth, NO getBoundingClientRect(): heroWord puede tener un transform:scale()
+    // activo (ver heroFrame(), introScale) -- getBoundingClientRect() lo incluye, así
+    // que con el reel a mitad de tamaño el cálculo "compensaba" de más y el texto
+    // terminaba desbordado al llegar a scale(1) (bug real). offsetWidth es la caja de
+    // layout, nunca se ve afectada por un transform (ni propio ni de un ancestro).
+    lines.forEach((s) => { s.style.display = 'inline-block'; max = Math.max(max, s.offsetWidth); s.style.display = 'block'; });
+    if (max > 0) el.style.fontSize = `${(100 * w) / max}px`;
+  }
+  function fitAll() { fit(heroWord, window.innerWidth * 0.03); }
+
+  function setReel(i) {
+    if (i === activeReel || !reelVids || !reelVids.length) return;
+    activeReel = i;
+    reelVids.forEach((v, k) => {
+      if (k === i) {
+        if (!v.src && v.dataset.src) v.src = v.dataset.src;
+        v.classList.add('on');
+        const p = v.play();
+        if (p && p.catch) p.catch(() => {});
+      } else {
+        v.classList.remove('on');
+      }
+    });
+    const n = reelVids[i + 1];
+    if (n && !n.src && n.dataset.src) n.src = n.dataset.src;
+    if (curtainLabel) curtainLabel.textContent = reelLabels[i] ?? '';
+  }
+
+  function heroFrame() {
+    if (!hero) return;
+    const r = hero.getBoundingClientRect();
+    const total = hero.offsetHeight - vh();
+    if (total <= 0) return;
+    const p = clamp(-r.top / total, 0, 1);
+
+    const a = ease(clamp(p / 0.18, 0, 1));
+    /* Franja inicial más chica y más arriba (pedido explícito) -- antes (33/37) dejaba
+       el wordmark de 2 líneas anclado a un 67vh fijo, que en viewports anchos/bajos
+       (ej. 1440x700) se salía por abajo del fold antes de scrollear. */
+    const top = lerp(22, 0, a), bot = lerp(56, 0, a), side = lerp(4, 0, a);
+    reel.style.top = `${top}%`;
+    reel.style.bottom = `${bot}%`;
+    reel.style.left = `${side}%`;
+    reel.style.right = `${side}%`;
+
+    // Entrada "crece con el scroll" (pedido explícito, viendo el video de referencia):
+    // el video y el wordmark arrancan al 50% y llegan a tamaño real cuando termina de
+    // abrirse la franja -- MISMA variable `a` que ya anima top/bottom/left/right, nunca
+    // un timer propio. Si el usuario no scrollea, se queda chico (igual que el reel
+    // sigue siendo una franja angosta) -- consistente con el resto del mecanismo.
+    const introScale = lerp(0.5, 1, a);
+    reel.style.transform = `scale(${introScale})`;
+
+    const wh = heroWord.getBoundingClientRect().height || 200;
+    // Clamp real contra el alto medido del wordmark (wh) -- nunca deja la segunda
+    // línea cortada por el borde inferior del viewport, sea cual sea su proporción.
+    const y0 = Math.min(vh() * 0.52, vh() - wh - 56), y1 = vh() * 0.46 - wh / 2;
+    heroWord.style.top = `${lerp(y0, Math.max(y1, vh() * 0.18), a)}px`;
+    if (hint) hint.style.opacity = String(1 - clamp(p / 0.08, 0, 1));
+    if (bar) bar.classList.toggle('on', p > 0.1);
+
+    const rp = clamp((p - 0.1) / 0.78, 0, 0.9999);
+    setReel(Math.floor(rp * reelVids.length));
+
+    const c = ease(clamp((p - 0.8) / 0.2, 0, 1));
+    curtain.style.transform = `translateY(${lerp(100, 0, c)}%)`;
+    heroWord.style.transform = `scale(${introScale}) translateY(${-c * vh() * 0.12}px)`;
+  }
+
+  function projFrame() {
+    projs.forEach((s) => {
+      const r = s.getBoundingClientRect();
+      const total = s.offsetHeight - vh();
+      const p = clamp(-r.top / total, 0, 1);
+      const m = +s.dataset.m;
+      const mm = window.innerWidth < 700 ? Math.max(m * 0.4, 0) : m;
+      const frame = s.querySelector('.p-frame');
+      const title = s.querySelector('.p-title');
+      const cap = s.querySelector('.p-caption');
+      const side = lerp(mm, 0, ease(clamp(p / 0.9, 0, 1)));
+      frame.style.left = `${side}%`;
+      frame.style.right = `${side}%`;
+      cap.style.setProperty('--m', `${side}vw`);
+      const tinRaw = clamp((p - 0.02) / 0.3, 0, 1);
+      const tin = ease(tinRaw);
+      const tout = clamp((p - 0.78) / 0.22, 0, 1);
+      // El bloque entero ya NO se desliza en X (pedido explícito: "no quiero que
+      // aparezca desde el costado... necesito que nazcan desde el medio" -- el
+      // translateX(-6vw->0) hacía que el título completo entrara desde el lado
+      // mientras las letras revelaban, dando la sensación de venir del costado en vez
+      // de nacer en su lugar). Solo queda el estirado vertical (scaleY) + la opacidad
+      // de salida (tout); la entrada la resuelve el reveal por caracter de abajo hacia
+      // arriba, cada letra en su propia posición final, sin desplazamiento horizontal.
+      title.style.opacity = String(clamp(1 - tout * 0.9, 0, 1));
+      title.style.transform = `scaleY(${lerp(1.5, 1.18, tin)})`;
+
+      // Reveal "typing" -- cada letra se desliza de abajo hacia arriba, en cascada de
+      // izquierda a derecha (pedido explícito). `tinRaw` (sin ease) es la línea de
+      // tiempo compartida: la letra 0 cubre 0..dur, la última cubre (1-dur)..1, todas
+      // las intermedias repartidas en medio -- funciona con cualquier cantidad de
+      // caracteres sin tocar números a mano por título.
+      const chars = s.__titleChars || (s.__titleChars = [].slice.call(title.querySelectorAll('.p-title__char')));
+      const n = chars.length;
+      if (n > 0) {
+        const dur = 0.45;
+        for (let i = 0; i < n; i++) {
+          const start = (n > 1 ? i / (n - 1) : 0) * (1 - dur);
+          const local = ease(clamp((tinRaw - start) / dur, 0, 1));
+          chars[i].style.opacity = String(local);
+          chars[i].style.transform = `translateY(${lerp(100, 0, local)}%)`;
+        }
+      }
+    });
+  }
+
+  function frame() { ticking = false; heroFrame(); projFrame(); }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+  function onResize() { fitAll(); onScroll(); }
+
+  function initStatic() {
+    reel.style.top = '0%'; reel.style.bottom = '0%'; reel.style.left = '0%'; reel.style.right = '0%';
+    heroWord.style.top = `${vh() * 0.46 - (heroWord.getBoundingClientRect().height || 200) / 2}px`;
+    curtain.style.transform = 'translateY(100%)';
+    if (hint) hint.style.opacity = '0';
+    if (bar) bar.classList.add('on');
+    setReel(0);
+    projs.forEach((s) => {
+      const m = +s.dataset.m;
+      const mm = window.innerWidth < 700 ? Math.max(m * 0.4, 0) : m;
+      const frame = s.querySelector('.p-frame');
+      const title = s.querySelector('.p-title');
+      const cap = s.querySelector('.p-caption');
+      const side = 0;
+      frame.style.left = `${side}%`; frame.style.right = `${side}%`;
+      cap.style.setProperty('--m', `${side}vw`);
+      title.style.opacity = '1';
+      title.style.transform = 'none';
+      title.querySelectorAll('.p-title__char').forEach((c) => {
+        c.style.opacity = '1';
+        c.style.transform = 'none';
+      });
+      const v = s.querySelector('video');
+      if (v && !v.src && v.dataset.src) v.src = v.dataset.src;
+      if (v) { const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+    });
+  }
+
+  function initHome() {
+    bar = document.querySelector('[data-ilcapo-bar]');
+    hero = document.querySelector('[data-ilcapo-hero]');
+    reel = document.querySelector('[data-ilcapo-reel]');
+    heroWord = document.querySelector('[data-ilcapo-word]');
+    curtain = document.querySelector('[data-ilcapo-curtain]');
+    curtainLabel = document.querySelector('[data-ilcapo-curtain-label]');
+    hint = document.querySelector('[data-ilcapo-hint]');
+    menu = document.querySelector('[data-ilcapo-menu]');
+    menuBtn = document.querySelector('[data-ilcapo-menu-btn]');
+    menuClose = document.querySelector('[data-ilcapo-menu-close]');
+    projs = [].slice.call(document.querySelectorAll('.proj'));
+    if (!hero || !reel || !heroWord || !curtain) return;
+    reelVids = [].slice.call(reel.querySelectorAll('video'));
+    reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    fitAll();
+
+    if (reduced) {
+      initStatic();
+      window.addEventListener('resize', fitAll);
+    } else {
+      if ('IntersectionObserver' in window) {
+        vidIO = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            const v = e.target.querySelector('video');
+            if (!v) return;
+            if (e.isIntersecting) {
+              if (!v.src && v.dataset.src) v.src = v.dataset.src;
+              const p = v.play();
+              if (p && p.catch) p.catch(() => {});
+            } else if (v.src) {
+              v.pause();
+            }
+          });
+        }, { rootMargin: '50% 0px 50% 0px' });
+        projs.forEach((s) => vidIO.observe(s));
+      } else {
+        projs.forEach((s) => {
+          const v = s.querySelector('video');
+          if (v && v.dataset.src) { v.src = v.dataset.src; const p = v.play(); if (p && p.catch) p.catch(() => {}); }
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onResize);
+      (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { fitAll(); frame(); });
+      frame();
+      setReel(0);
+    }
+
+    menuLinks = [].slice.call(menu.querySelectorAll('a'));
+    function toggleMenu(o) { menu.classList.toggle('open', o); menuBtn.setAttribute('aria-expanded', String(o)); }
+    menuBtn.addEventListener('click', () => toggleMenu(true));
+    menuClose.addEventListener('click', () => toggleMenu(false));
+    menuLinks.forEach((a) => a.addEventListener('click', () => toggleMenu(false)));
+    menuKeydown = (e) => { if (e.key === 'Escape') toggleMenu(false); };
+    document.addEventListener('keydown', menuKeydown);
+  }
+
+  function cleanupHome() {
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResize);
+    window.removeEventListener('resize', fitAll);
+    if (menuKeydown) document.removeEventListener('keydown', menuKeydown);
+    if (vidIO) { vidIO.disconnect(); vidIO = undefined; }
+    reelVids?.forEach((v) => v.pause());
+    projs?.forEach((s) => { const v = s.querySelector('video'); if (v) v.pause(); });
+    activeReel = -1;
+  }
+
+  document.addEventListener('astro:page-load', initHome);
+  document.addEventListener('astro:before-swap', cleanupHome);
+</script>
+
+<style>
+  .ilcapo {
+    --bg: var(--bg-primary);
+    --green: var(--accent);
+    --green-lt: var(--accent-hover);
+    --paper: var(--text-primary);
+    --mute: var(--text-secondary);
+    --f-grotesk: 'Helvetica Neue', 'HelveticaNeue', Helvetica, Arial, sans-serif;
+    --f-didone: 'Ivar Display', 'Ivar Display Condensed', 'Bodoni Moda', 'Didot', serif;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: var(--f-grotesk);
+    -webkit-font-smoothing: antialiased;
+    /* NO overflow-x:hidden acá -- en un ancestro que no es html/body (ya lo tiene,
+       theme.css), setear solo overflow-x fuerza overflow-y:auto por spec (CSS
+       Overflow §3), convirtiendo este div en un scroll container intermedio que
+       rompe TODOS los position:sticky anidados (.hero-stick/.proj-stick quedan
+       "pegados" a ESTE div en vez de al viewport -- bug real, encontrado en QA). */
+  }
+  .ilcapo a { color: inherit; text-decoration: none; }
+  .ilcapo video { display: block; }
+
+  /* ---------- barra fija ---------- */
+  .bar {
+    position: fixed; inset: 0 0 auto 0; z-index: 50; height: 64px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 22px 24px 0; pointer-events: none; font-family: var(--f-didone);
+    text-transform: uppercase; font-size: 20px; letter-spacing: 0.01em;
+    color: var(--paper); mix-blend-mode: normal;
+  }
+  .bar a, .bar button { pointer-events: auto; color: inherit; background: none; border: 0; font: inherit; text-transform: inherit; cursor: pointer; opacity: 0; transition: opacity 0.5s; }
+  .bar.on a, .bar.on button { opacity: 1; }
+  .bar .logo { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: 84px; opacity: 1; transition: filter 0.4s; pointer-events: auto; }
+  .bar .logo img { width: 100%; display: block; }
+  .bar a:focus-visible, .bar button:focus-visible { outline: 2px solid var(--paper); outline-offset: 4px; }
+
+  /* ---------- portada ---------- */
+  .hero { position: relative; height: 420vh; }
+  .hero-stick { position: sticky; top: 0; height: 100vh; overflow: hidden; background: var(--green); }
+  .reel {
+    position: absolute; overflow: hidden; background: #111; left: 0; right: 0; top: 0; bottom: 0;
+    /* Entrada "crece con el scroll" (ver heroFrame() en el script, variable introScale):
+       al 50% en p=0, llega a 100% cuando termina de abrirse la franja -- atado al mismo
+       progreso de scroll que ya anima top/bottom/left/right, nunca un timer. */
+    transform-origin: center center;
+  }
+  .reel video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.6s; }
+  .reel video.on { opacity: 1; }
+  .word {
+    position: absolute; left: 0; right: 0; text-align: center; font-family: var(--f-grotesk);
+    font-weight: 500; text-transform: uppercase; line-height: 0.8; letter-spacing: -0.045em;
+    color: var(--paper); white-space: nowrap; z-index: 5; will-change: transform;
+  }
+  .word span { display: block; }
+  [data-ilcapo-word] { transform-origin: center center; }
+  .curtain {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--bg);
+    transform: translateY(100%); z-index: 6; display: flex; justify-content: center;
+    padding-top: 20px; will-change: transform;
+  }
+  .curtain p { font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--green-lt); }
+  .scrollhint { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; z-index: 7; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper); transition: opacity 0.4s; }
+
+  /* ---------- proyectos ---------- */
+  .proj { position: relative; height: 260vh; }
+  .proj-stick { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .proj[data-bg="black"] .proj-stick { background: var(--bg); }
+  .proj[data-bg="green"] .proj-stick { background: var(--green); }
+  .p-label { position: absolute; left: 0; right: 0; top: calc(64px + 2.2vh); text-align: center; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; z-index: 3; }
+  .proj[data-bg="black"] .p-label { color: var(--green-lt); }
+  .proj[data-bg="green"] .p-label { color: var(--paper); }
+  .p-frame { position: absolute; top: calc(64px + 7vh); bottom: 0; overflow: hidden; background: #111; will-change: left, right; }
+  .p-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .p-frame::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8, 10, 9, 0.15) 0%, rgba(8, 10, 9, 0) 40%, rgba(8, 10, 9, 0.62) 100%); pointer-events: none; }
+  .p-title {
+    position: absolute; left: 0; right: 0; top: calc(64px + 7vh + 14vh); text-align: center;
+    font-family: var(--f-didone); text-transform: uppercase; font-size: clamp(34px, 8.4vw, 128px);
+    line-height: 0.92; letter-spacing: -0.02em; color: var(--paper); z-index: 3; padding: 0 4vw;
+    transform: scaleY(1.18); transform-origin: center top; will-change: transform, opacity; text-wrap: balance;
+  }
+  /* Reveal "typing" por letra (pedido explícito): .p-title__word mantiene cada palabra
+     entera (nowrap) para que el título siga quebrando línea solo ENTRE palabras en
+     mobile, igual que antes. .p-title__mask recorta (overflow:hidden) el desplazamiento
+     vertical de cada letra -- sin la máscara se vería la letra "asomando" por debajo del
+     título en vez de revelarse limpia. Visible por defecto sin JS (opacity:1,
+     transform:none) -- el JS (projFrame) es el único que las oculta antes de revelarlas. */
+  .p-title__word { display: inline-block; white-space: nowrap; }
+  .p-title__mask { display: inline-block; overflow: hidden; vertical-align: top; }
+  .p-title__char { display: inline-block; opacity: 1; transform: translateY(0%); will-change: transform, opacity; }
+  .p-caption {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex;
+    justify-content: space-between; align-items: flex-end; gap: 24px;
+    padding: 0 max(24px, calc(var(--m, 6vw) + 24px)) 28px; flex-wrap: wrap;
+  }
+  .p-caption p { max-width: 46ch; font-size: 15px; line-height: 1.45; color: var(--paper); }
+  .p-caption a { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--paper); padding-bottom: 3px; white-space: nowrap; }
+  .p-caption a:focus-visible { outline: 2px solid var(--paper); outline-offset: 4px; }
+
+  /* ---------- menú ---------- */
+  .menu {
+    position: fixed; inset: 0; z-index: 60; background: var(--bg); display: flex; flex-direction: column;
+    justify-content: center; align-items: center; gap: 6px; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+  }
+  .menu.open { opacity: 1; pointer-events: auto; }
+  .menu a { font-family: var(--f-didone); text-transform: uppercase; font-size: clamp(32px, 6vw, 76px); line-height: 1.02; color: var(--paper); transition: color 0.2s; }
+  .menu a:hover { color: var(--green-lt); }
+  .menu .close { position: absolute; top: 22px; right: 24px; font-family: var(--f-didone); text-transform: uppercase; font-size: 20px; background: none; border: 0; color: var(--paper); cursor: pointer; }
+
+  @media (max-width: 700px) {
+    .bar { padding: 18px 16px 0; font-size: 16px; }
+    .bar .logo { width: 64px; }
+    .p-caption { padding: 0 16px 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reel video, .bar a, .bar button { transition: none; }
+  }
+</style>
