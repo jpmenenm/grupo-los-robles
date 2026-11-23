@@ -22,7 +22,14 @@ const year = new Date().getFullYear();
 const { siteName, tagline } = site.site;
 const company = site.company ?? {};
 const social = site.social ?? [];
-const orderUrl = site.orderUrl ?? '#';
+// Root-relative vía BASE_URL (mismo criterio que Header.astro): el contrato guarda
+// "/contacto" (absoluto a la raíz del dominio), pero este Footer se sirve en varias
+// rutas/profundidades (Home en "/" o "/en/", Contacto en "/contacto/") y, en el preview
+// de GitHub Pages, todo el sitio vive bajo "/grupo-los-robles/" -- un href con "/"
+// inicial ignora ese subpath siempre. Se limpia la barra inicial del contrato y se
+// vuelve a anteponer BASE_URL (que ya trae su propio "/" final).
+const base = import.meta.env.BASE_URL;
+const orderUrl = `${base}${(site.orderUrl ?? '#').replace(/^\/+/, '')}`;
 ---
 
 <footer class="end" id="cierre">

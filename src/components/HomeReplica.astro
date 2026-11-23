@@ -33,6 +33,13 @@ const {
 
 const reelLabels = divisions.map((d) => d.reelLabel ?? d.name);
 const MARGINS = [26, 19, 13, 7, 2];
+// Root-relative vía BASE_URL (mismo criterio que Header.astro): esta Home se sirve en
+// "/" en producción pero bajo "/grupo-los-robles/" en el preview de GitHub Pages (ver
+// astro.config.mjs, GH_PAGES_PREVIEW) -- y, para "en/", ya vive un nivel más profundo
+// que la Home en español. Un src/href con "/" inicial ignora esto SIEMPRE (apunta a la
+// raíz real del dominio, nunca al subpath) -- bug real: logo y videos no cargaban en el
+// preview de GitHub Pages. BASE_URL ya incluye el "/" final.
+const base = import.meta.env.BASE_URL;
 
 const t = locale === 'en'
   ? { contacto: 'Contact', menu: 'Menu', cerrar: 'Close', scroll: 'Scroll', contactoTitle: 'Contact' }
@@ -41,9 +48,9 @@ const t = locale === 'en'
 
 <div class="ilcapo">
   <header class="bar" id="bar" data-ilcapo-bar>
-    <a href="/contacto/">{t.contacto}</a>
+    <a href={`${base}contacto/`}>{t.contacto}</a>
     <a class="logo" href="#top" aria-label="Grupo Los Robles">
-      <img src="/images/LOGO-LOSrOBLES-BLANCO.webp" alt="Grupo Los Robles" />
+      <img src={`${base}images/LOGO-LOSrOBLES-BLANCO.webp`} alt="Grupo Los Robles" />
     </a>
     <button type="button" id="menuBtn" data-ilcapo-menu-btn aria-expanded="false">{t.menu}</button>
   </header>
@@ -61,7 +68,7 @@ const t = locale === 'en'
       <div class="hero-stick" id="heroStick">
         <div class="reel" id="reel" data-ilcapo-reel>
           {divisions.map((d, i) => (
-            <video muted loop playsinline preload="metadata" data-src={`/videos/${d.id}.mp4`} />
+            <video muted loop playsinline preload="metadata" data-src={`${base}videos/${d.id}.mp4`} />
           ))}
         </div>
         <h1 class="word" id="heroWord" data-ilcapo-word><span>Grupo</span><span>Los Robles</span></h1>
@@ -77,7 +84,7 @@ const t = locale === 'en'
         <div class="proj-stick">
           <div class="p-label">{reelLabels[i]}</div>
           <div class="p-frame">
-            <video muted loop playsinline preload="none" data-src={`/videos/${d.id}.mp4`} />
+            <video muted loop playsinline preload="none" data-src={`${base}videos/${d.id}.mp4`} />
           </div>
           <h2 class="p-title" data-p-title>
             {d.name.split(' ').map((word, wi, words) => (
